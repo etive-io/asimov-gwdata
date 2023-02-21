@@ -1,6 +1,7 @@
 import importlib
 import os
 import configparser
+import glob
 
 import asimov.pipeline
 from asimov import config
