@@ -40,7 +40,7 @@ gwdata = "datafind.main:get_data"
 
 [tool.setuptools]
 packages = [
-	"datafind",
+	"asimov-gwdata",
 ]
 
 [project.entry-points.'asimov.pipelines']
