@@ -67,8 +67,11 @@ class Pipeline(asimov.pipeline.Pipeline):
         for frame in results_dir:
             ifo = frame.split("_")[0].split("-")[1]
             frames[ifo] = frame
-        
 
         outputs = {}
         outputs["frames"] = frames
+
+        self.production.meta['data']['data files'] = frames
+        self.production.update()
+        
         return outputs
