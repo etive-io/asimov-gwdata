@@ -77,7 +77,7 @@ class Pipeline(asimov.pipeline.Pipeline):
         frames = {}
 
         for frame in results_dir:
-            ifo = frame.split("_")[0].split("-")[1]
+            ifo = frame.split("/")[-1].split("_")[0].split("-")[1]
             frames[ifo] = frame
 
         outputs = {}
