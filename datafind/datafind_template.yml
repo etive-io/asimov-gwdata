@@ -25,4 +25,4 @@ time:
   start: {{ production.meta['event time'] | plus: -1 }} 
   end:  {{ production.meta['event time'] | plus: 1 }} 
   duration: {{ production.meta['file length'] | default: 32 }} 
-data: {{ production.meta['download'] | default: ['frames']
+data: {{ production.meta['download'] | default: "['frames']" }}
