@@ -18,7 +18,8 @@
 {%- assign priors = production.meta['priors'] -%}
 {%- assign data = production.meta['data'] -%}
 {%- assign quality = production.meta['quality'] -%}
-{%- assign ifos = production.meta['interferometers'] -%}
+{%- assign ifos = production.meta['interferometers'] %}
+
 
 interferometers: {{ ifos }}
 time:
