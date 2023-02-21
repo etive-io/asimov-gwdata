@@ -1,0 +1,47 @@
+[build-system]
+requires = [
+	"setuptools>=61.0",
+	"setuptools_scm[toml]>=3.4.3",
+	"wheel",
+]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "asimov-gwdata"
+version = "0.0.1"
+authors = [
+	{ name = "Daniel Williams", email = "daniel.williams@ligo.org" }
+]
+description = "An asimov plugin to make downloading gravitational wave data easier"
+readme = "README.md"
+license = { text = "MIT" }
+classifiers = [
+	"Programming Language :: Python :: 3",
+	"License :: OSI Approved :: MIT License",
+	"Operating System :: OS Independent"
+]
+requires-python = ">=3.7"
+dependencies = [
+        "gwosc",
+	"asimov>=0.4.0",
+]
+
+[project.optional-dependencies]
+docs = [
+	"sphinx",
+	"kentigern",
+]
+
+[project.scripts]
+#gwdata = "datafind:main"
+gwdata = "datafind.main:get_data"
+[project.urls]
+"Source code" = "https://git.ligo.org/asimov/asimov-gwdatahelp"
+
+[tool.setuptools]
+packages = [
+	"datafind",
+]
+
+[project.entry-points.'asimov.pipelines']
+gwdata = 'datafind.asimov:Pipeline'

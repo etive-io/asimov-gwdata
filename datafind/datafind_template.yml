@@ -1,0 +1,28 @@
+
+#; ------------------------------------------
+#; {{ production.name }}
+#; ------------------------------------------
+#; Bilby configuration file created by asimov
+#; for {{ production.event.name}}.
+#;
+
+{%- if production.event.repository -%}
+{%- assign repo_dir = production.event.repository.directory -%}
+{%- else -%}
+{%- assign repo_dir = "." -%}
+{%- endif -%}
+{%- assign meta = production.meta -%}
+{%- assign sampler = production.meta['sampler'] -%}
+{%- assign scheduler = production.meta['scheduler'] -%}
+{%- assign likelihood = production.meta['likelihood'] -%}
+{%- assign priors = production.meta['priors'] -%}
+{%- assign data = production.meta['data'] -%}
+{%- assign quality = production.meta['quality'] -%}
+{%- assign ifos = production.meta['interferometers'] -%}
+
+interferometers: {{ ifos }}
+time:
+  start: {{ production.meta['event time'] | plus: -1 }} 
+  end:  {{ production.meta['event time'] | plus: 1 }} 
+  duration: {{ production.meta['file length'] | default: 32 }} 
+data: {{ production.meta['download'] | default: ['frames']

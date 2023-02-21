@@ -1,0 +1,10 @@
+
+interferometers:
+  - H1
+  - L1
+time:
+  start: 1126259447
+  end: 1126259449
+  duration: 32
+data:
+  - frames
