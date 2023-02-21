@@ -73,7 +73,7 @@ class Pipeline(asimov.pipeline.Pipeline):
         """
         Collect the assets for this job.
         """
-        results_dir = glob.glob(f"{self.production.rundir}/frames/*")[0]
+        results_dir = glob.glob(f"{self.production.rundir}/frames/*")
         frames = {}
 
         for frame in results_dir:
@@ -83,7 +83,7 @@ class Pipeline(asimov.pipeline.Pipeline):
         outputs = {}
         outputs["frames"] = frames
 
-        self.production.meta['data']['data files'] = frames
-        self.production.update()
+        self.production.event.meta['data']['data files'] = frames
+        self.production.event.update_data()
         
         return outputs
