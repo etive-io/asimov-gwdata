@@ -58,6 +58,16 @@ class Pipeline(asimov.pipeline.Pipeline):
     def submit_dag(self, dryrun=False):
         return self.clusterid
 
+    def detect_completion(self):
+        self.logger.info("Checking for completion.")
+        frames = self.collect_assets()["frames"]
+        if len(list(frames.values())) > 0:
+            self.logger.info("Frames detected, job complete.")
+            return True
+        else:
+            self.logger.info("Datafind job completion was not detected.")
+            return False
+    
     def collect_assets(self):
         """
         Collect the assets for this job.
