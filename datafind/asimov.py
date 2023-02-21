@@ -68,6 +68,9 @@ class Pipeline(asimov.pipeline.Pipeline):
         else:
             self.logger.info("Datafind job completion was not detected.")
             return False
+
+    def after_completion(self):
+        self.production.status = "uploaded"
     
     def collect_assets(self):
         """
@@ -84,7 +87,6 @@ class Pipeline(asimov.pipeline.Pipeline):
         outputs["frames"] = frames
 
         self.production.event.meta['data']['data files'] = frames
-        self.production.status = "uploaded"
         self.production.event.update_data()
         
         return outputs
