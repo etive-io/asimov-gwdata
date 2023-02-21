@@ -3,13 +3,15 @@ import click
 
 import requests
 import shutil
+import os
 
 import yaml
 
-def download_file(url):
+def download_file(url, directory="frames"):
+    os.makedirs(directory, exist_ok=True)
     local_filename = url.split('/')[-1]
     with requests.get(url, stream=True) as r:
-        with open(local_filename, 'wb') as f:
+        with open(os.path.join(directory, local_filename), 'wb') as f:
             shutil.copyfileobj(r.raw, f)
 
     return local_filename

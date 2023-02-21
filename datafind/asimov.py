@@ -57,10 +57,18 @@ class Pipeline(asimov.pipeline.Pipeline):
     def submit_dag(self, dryrun=False):
         return self.clusterid
 
+    def collect_assets(self):
+        """
+        Collect the assets for this job.
+        """
+        results_dir = glob.glob(f"{self.production.rundir}/frames/*")[0]
+        frames = {}
 
-# def submit_description(schedulers):
-#     schedd = htcondor.Schedd(schedulers)
-#     with schedd.transaction() as txn:
-#         cluster_id = job.queue(txn)
-#     return cluster_id
+        for frame in results_dir:
+            ifo = frame.split("_")[0].split("-")[1]
+            frames[ifo] = frame
+        
 
+        outputs = {}
+        outputs["frames"] = frames
+        return outputs
