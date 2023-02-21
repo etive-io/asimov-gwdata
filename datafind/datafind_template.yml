@@ -2,7 +2,7 @@
 #; ------------------------------------------
 #; {{ production.name }}
 #; ------------------------------------------
-#; Bilby configuration file created by asimov
+#; Datafind configuration file created by asimov
 #; for {{ production.event.name}}.
 #;
 
