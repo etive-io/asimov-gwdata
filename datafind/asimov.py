@@ -14,7 +14,7 @@ class Pipeline(asimov.pipeline.Pipeline):
     """
     
     name = "gwdata"
-    config_template = importlib.resources.path("asimov-datafind", "datafind_template.yml")
+    config_template = importlib.resources.path("asimov-gwdata", "datafind_template.yml")
     _pipeline_command = "gwdata"
 
     def build_dag(self, dryrun=False):
