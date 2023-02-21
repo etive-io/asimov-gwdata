@@ -84,6 +84,7 @@ class Pipeline(asimov.pipeline.Pipeline):
         outputs["frames"] = frames
 
         self.production.event.meta['data']['data files'] = frames
+        self.production.status = "uploaded"
         self.production.event.update_data()
         
         return outputs
