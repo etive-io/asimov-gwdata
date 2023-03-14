@@ -6,6 +6,7 @@ import yaml
 
 from gwosc.locate import get_urls
 from pesummary.io import read, write
+from asimov.utils import set_directory
 import click
 
 def download_file(url, directory="frames"):
@@ -40,17 +41,23 @@ def get_pesummary(components, settings):
     
         if component == "calibration":
             calibration_data = data.priors["calibration"][analysis]
+            os.makedirs("calibration", exist_ok=True)
             for ifo, calibration in calibration_data.items():
-                calibration.save_to_file(f"{ifo}.dat", delimiter="\t")
+                with set_directory("calibration"):
+                    calibration.save_to_file(f"{ifo}.dat", delimiter="\t")
 
         if component == "posterior":
+            os.makedirs("posterior", exist_ok=True)
             analysis_data = data.samples_dict[analysis]
-            analysis_data.write(package="gw", file_format="dat", filename="posterior_samples.dat")
+            analysis_data.write(package="gw", file_format="dat", filename="posterior/posterior_samples.dat")
 
         if component == "psds":
-            analysis_data = data.psds[analysis]
+            os.makedirs("psds", exist_ok=True)
+            analysis_data = data.psd[analysis]
+            print(analysis_data)
             for ifo, psd in analysis_data.items():
-                psd.save_to_file(f"{ifo}.dat", delimiter="\t")
+                with set_directory("psds"):
+                    psd.save_to_file(f"{ifo}.dat", delimiter="\t")
     
 def get_data_frames(detectors, start, end, duration):
     urls = {}

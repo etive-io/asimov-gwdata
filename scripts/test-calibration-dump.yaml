@@ -1,6 +1,7 @@
 data:
-  # - calibration
+  - calibration
   - posterior
+  - psds
 pesummary:
   metafile: test.h5
   analysis: C01:IMRPhenomXPHM
