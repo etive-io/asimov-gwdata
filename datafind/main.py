@@ -1,11 +1,12 @@
-from gwosc.locate import get_urls
-import click
-
 import requests
 import shutil
 import os
 
 import yaml
+
+from gwosc.locate import get_urls
+from pesummary.io import read, write
+import click
 
 def download_file(url, directory="frames"):
     os.makedirs(directory, exist_ok=True)
@@ -24,7 +25,33 @@ def get_data(settings): #detectors, start, end, duration, frames):
 
     if "frames" in settings['data']:
         get_data_frames(settings['interferometers'], settings['time']['start'], settings['time']['end'], settings['time']['duration'])
+        settings['data'].pop("frames")
+        
+    get_pesummary(components=settings['data'], settings=settings)
 
+def get_pesummary(components, settings):
+    """
+    Fetch data from a PESummary metafile.
+    """
+    data = read(settings['pesummary']['metafile'], package="gw")
+    analysis = settings['pesummary']['analysis']
+
+    for component in components:
+    
+        if component == "calibration":
+            calibration_data = data.priors["calibration"][analysis]
+            for ifo, calibration in calibration_data.items():
+                calibration.save_to_file(f"{ifo}.dat", delimiter="\t")
+
+        if component == "posterior":
+            analysis_data = data.samples_dict[analysis]
+            analysis_data.write(package="gw", file_format="dat", filename="posterior_samples.dat")
+
+        if component == "psds":
+            analysis_data = data.psds[analysis]
+            for ifo, psd in analysis_data.items():
+                psd.save_to_file(f"{ifo}.dat", delimiter="\t")
+    
 def get_data_frames(detectors, start, end, duration):
     urls = {}
     files = {}
