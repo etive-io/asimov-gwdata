@@ -31,7 +31,7 @@ def get_data(settings): #detectors, start, end, duration, frames):
 
     get_pesummary(components=settings['data'], settings=settings)
 
-def get_pesummary(components, settings, analysis=None):
+def get_pesummary(components, settings):
     """
     Fetch data from a PESummary metafile.
     """
@@ -40,11 +40,7 @@ def get_pesummary(components, settings, analysis=None):
     if "source" in settings:
         if settings['source']['type'] == "pesummary":
             location = settings['source']['location']
-
-            if analysis:
-                location = location.format(analysis.meta)
-
-            location = glob.glob(analysis)[0]
+            location = glob.glob(location)[0]
     
     data = read(location, package="gw")
     analysis = settings['source']['analysis']
