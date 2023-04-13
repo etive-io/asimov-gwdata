@@ -28,13 +28,15 @@ class Pipeline(asimov.pipeline.Pipeline):
         This is something of a hack, to allow us to rewrite the location paths
         on the fly to prevent hard-coding things at any stage.
         """
-
+        name = self.production.name
         ini = self.production.event.repository.find_prods(name, self.category)[0]
         with open(ini, "r") as config_file:
             data = config_file.read()
-        str(data).format(meta=self.production.meta)
+        data = data.replace("<event>", self.production.event.name)
+        data = data.replace("<gid>", self.production.event.meta['ligo']['gid'])
+        print(data)
         with open(ini, "w") as config_file:
-            config_file.write(ini)
+            config_file.write(data)
         
     def build_dag(self, dryrun=False):
         """
@@ -42,7 +44,7 @@ class Pipeline(asimov.pipeline.Pipeline):
         """
         name = self.production.name  # meta['name']
         ini = self.production.event.repository.find_prods(name, self.category)[0]
-
+        self._substitute_locations_in_config()
         executable = os.path.join(config.get('pipelines', 'environment'), 'bin', self._pipeline_command)
         command  = ["--settings", ini]
         full_command = executable + " " + " ".join(command)

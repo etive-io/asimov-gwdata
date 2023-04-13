@@ -5,5 +5,5 @@ download:
   - posterior
 source:
   type: pesummary
-  location: /home/daniel/repositories/ligo/asimov-pipelines/datafind/scripts/test.h5
+  location: /home/daniel/<event>/test.h5
   analysis: C01:IMRPhenomXPHM
