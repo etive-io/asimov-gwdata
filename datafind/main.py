@@ -1,6 +1,7 @@
 import requests
 import shutil
 import os
+import glob
 
 import yaml
 
@@ -27,15 +28,26 @@ def get_data(settings): #detectors, start, end, duration, frames):
     if "frames" in settings['data']:
         get_data_frames(settings['interferometers'], settings['time']['start'], settings['time']['end'], settings['time']['duration'])
         settings['data'].pop("frames")
-        
+
     get_pesummary(components=settings['data'], settings=settings)
 
-def get_pesummary(components, settings):
+def get_pesummary(components, settings, analysis=None):
     """
     Fetch data from a PESummary metafile.
     """
-    data = read(settings['pesummary']['metafile'], package="gw")
-    analysis = settings['pesummary']['analysis']
+
+    # First find the metafile
+    if "source" in settings:
+        if settings['source']['type'] == "pesummary":
+            location = settings['source']['location']
+
+            if analysis:
+                location = location.format(analysis.meta)
+
+            location = glob.glob(analysis)[0]
+    
+    data = read(location, package="gw")
+    analysis = settings['source']['analysis']
 
     for component in components:
     
@@ -48,13 +60,13 @@ def get_pesummary(components, settings):
 
         if component == "posterior":
             os.makedirs("posterior", exist_ok=True)
-            analysis_data = data.samples_dict[analysis]
-            analysis_data.write(package="gw", file_format="dat", filename="posterior/posterior_samples.dat")
+            shutil.copy(location, os.path.join("posterior", "metafile.h5"))
+            #analysis_data = data.samples_dict[analysis]
+            #analysis_data.write(package="gw", file_format="dat", filename="posterior/posterior_samples.dat")
 
         if component == "psds":
             os.makedirs("psds", exist_ok=True)
             analysis_data = data.psd[analysis]
-            print(analysis_data)
             for ifo, psd in analysis_data.items():
                 with set_directory("psds"):
                     psd.save_to_file(f"{ifo}.dat", delimiter="\t")

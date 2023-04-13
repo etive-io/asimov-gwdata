@@ -19,6 +19,23 @@ class Pipeline(asimov.pipeline.Pipeline):
         config_template = template_file
     _pipeline_command = "gwdata"
 
+    def _substitute_locations_in_config(self):
+        """
+        Perform string substitutions in the config file for this pipeline.
+
+        Notes
+        -----
+        This is something of a hack, to allow us to rewrite the location paths
+        on the fly to prevent hard-coding things at any stage.
+        """
+
+        ini = self.production.event.repository.find_prods(name, self.category)[0]
+        with open(ini, "r") as config_file:
+            data = config_file.read()
+        str(data).format(meta=self.production.meta)
+        with open(ini, "w") as config_file:
+            config_file.write(ini)
+        
     def build_dag(self, dryrun=False):
         """
         Create a condor submission description.

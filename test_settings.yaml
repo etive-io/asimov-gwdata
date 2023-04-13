@@ -8,3 +8,4 @@ time:
   duration: 32
 data:
   - frames
+  - posterior
