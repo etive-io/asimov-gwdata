@@ -1,11 +1,14 @@
-from gwosc.locate import get_urls
-import click
-
 import requests
 import shutil
 import os
+import glob
 
 import yaml
+
+from gwosc.locate import get_urls
+from pesummary.io import read, write
+from asimov.utils import set_directory
+import click
 
 def download_file(url, directory="frames"):
     os.makedirs(directory, exist_ok=True)
@@ -24,7 +27,46 @@ def get_data(settings): #detectors, start, end, duration, frames):
 
     if "frames" in settings['data']:
         get_data_frames(settings['interferometers'], settings['time']['start'], settings['time']['end'], settings['time']['duration'])
+        settings['data'].pop("frames")
 
+    get_pesummary(components=settings['data'], settings=settings)
+
+def get_pesummary(components, settings):
+    """
+    Fetch data from a PESummary metafile.
+    """
+
+    # First find the metafile
+    if "source" in settings:
+        if settings['source']['type'] == "pesummary":
+            location = settings['source']['location']
+            location = glob.glob(location)[0]
+    
+    data = read(location, package="gw")
+    analysis = settings['source']['analysis']
+
+    for component in components:
+    
+        if component == "calibration":
+            calibration_data = data.priors["calibration"][analysis]
+            os.makedirs("calibration", exist_ok=True)
+            for ifo, calibration in calibration_data.items():
+                with set_directory("calibration"):
+                    calibration.save_to_file(f"{ifo}.dat", delimiter="\t")
+
+        if component == "posterior":
+            os.makedirs("posterior", exist_ok=True)
+            shutil.copy(location, os.path.join("posterior", "metafile.h5"))
+            #analysis_data = data.samples_dict[analysis]
+            #analysis_data.write(package="gw", file_format="dat", filename="posterior/posterior_samples.dat")
+
+        if component == "psds":
+            os.makedirs("psds", exist_ok=True)
+            analysis_data = data.psd[analysis]
+            for ifo, psd in analysis_data.items():
+                with set_directory("psds"):
+                    psd.save_to_file(f"{ifo}.dat", delimiter="\t")
+    
 def get_data_frames(detectors, start, end, duration):
     urls = {}
     files = {}

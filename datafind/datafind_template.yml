@@ -27,3 +27,9 @@ time:
   end:  {{ production.meta['event time'] | plus: 1 }} 
   duration: {{ production.meta['file length'] | default: 32 }} 
 data: {{ production.meta['download'] | default: "['frames']" }}
+{% if production.meta contains 'source' %}
+source:
+  type: {{ production.meta['source']['type'] }}
+  location: {{ production.meta['source']['location'] }}
+  analysis: {{ production.meta['source']['analysis'] }}
+{% endif %}

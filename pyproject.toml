@@ -6,9 +6,13 @@ requires = [
 ]
 build-backend = "setuptools.build_meta"
 
+[tool.setuptools_scm]
+version_scheme = "release-branch-semver"
+
 [project]
 name = "asimov-gwdata"
-version = "0.0.1"
+dynamic = ["version"]
+
 authors = [
 	{ name = "Daniel Williams", email = "daniel.williams@ligo.org" }
 ]
