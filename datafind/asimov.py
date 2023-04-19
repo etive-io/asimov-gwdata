@@ -33,7 +33,7 @@ class Pipeline(asimov.pipeline.Pipeline):
         with open(ini, "r") as config_file:
             data = config_file.read()
         data = data.replace("<event>", self.production.event.name)
-        data = data.replace("<gid>", self.production.event.meta['ligo']['gid'])
+        data = data.replace("<gid>", self.production.event.meta['ligo']['preferred event'])
         print(data)
         with open(ini, "w") as config_file:
             config_file.write(data)
