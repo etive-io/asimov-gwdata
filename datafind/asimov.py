@@ -59,6 +59,9 @@ class Pipeline(asimov.pipeline.Pipeline):
             "request_disk": "1024",
             "request_memory": "1024",
             "batch_name": f"gwdata/{name}",
+            "accounting_group_user": config.get('condor', 'user'),
+            "accounting_group": self.production.meta["accounting group"],
+
         }
 
         job = htcondor.Submit(description)
@@ -82,6 +85,7 @@ class Pipeline(asimov.pipeline.Pipeline):
                 cluster_id = job.queue(txn)
 
         self.production.job_id = int(cluster_id)
+        print(cluster_id)
         self.clusterid = cluster_id
 
     def submit_dag(self, dryrun=False):
