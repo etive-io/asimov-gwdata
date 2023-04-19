@@ -60,7 +60,7 @@ class Pipeline(asimov.pipeline.Pipeline):
             "request_memory": "1024",
             "batch_name": f"gwdata/{name}",
             "accounting_group_user": config.get('condor', 'user'),
-            "accounting_group": self.production.meta["accounting group"],
+            "accounting_group": self.production.meta['scheduler']["accounting group"],
 
         }
 
