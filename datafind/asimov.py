@@ -52,7 +52,7 @@ class Pipeline(asimov.pipeline.Pipeline):
 
         description = {
             "executable": f"{executable}",
-            "arguments": f"{command}",
+            "arguments": f"{" ".join(command)}",
             "output": f"{name}.out",
             "error": f"{name}.err",
             "log": f"{name}.log",
