@@ -4,6 +4,7 @@ import configparser
 import glob
 
 import asimov.pipeline
+
 from asimov import config
 import htcondor
 from asimov.utils import set_directory
@@ -13,7 +14,7 @@ class Pipeline(asimov.pipeline.Pipeline):
     """
     An asimov pipeline for datafind.
     """
-    
+
     name = "gwdata"
     with importlib.resources.path("datafind", "datafind_template.yml") as template_file:
         config_template = template_file
@@ -34,7 +35,7 @@ class Pipeline(asimov.pipeline.Pipeline):
             data = config_file.read()
         data = data.replace("<event>", self.production.event.name)
         data = data.replace("<gid>", self.production.event.meta['ligo']['preferred event'])
-        print(data)
+        self.logger.info(data)
         with open(ini, "w") as config_file:
             config_file.write(data)
         
@@ -46,7 +47,7 @@ class Pipeline(asimov.pipeline.Pipeline):
         ini = self.production.event.repository.find_prods(name, self.category)[0]
         self._substitute_locations_in_config()
         executable = os.path.join(config.get('pipelines', 'environment'), 'bin', self._pipeline_command)
-        command  = ["--settings", ini]
+        command = ["--settings", ini]
         full_command = executable + " " + " ".join(command)
         self.logger.info(full_command)
 
@@ -61,7 +62,6 @@ class Pipeline(asimov.pipeline.Pipeline):
             "batch_name": f"gwdata/{name}",
             "accounting_group_user": config.get('condor', 'user'),
             "accounting_group": self.production.meta['scheduler']["accounting group"],
-
         }
 
         job = htcondor.Submit(description)
@@ -83,9 +83,9 @@ class Pipeline(asimov.pipeline.Pipeline):
             schedd = htcondor.Schedd(schedulers)
             with schedd.transaction() as txn:
                 cluster_id = job.queue(txn)
+                self.logger.info("Submitted to htcondor job queue.")
 
         self.production.job_id = int(cluster_id)
-        print(cluster_id)
         self.clusterid = cluster_id
 
     def submit_dag(self, dryrun=False):
@@ -105,7 +105,8 @@ class Pipeline(asimov.pipeline.Pipeline):
 
     def after_completion(self):
         self.production.status = "uploaded"
-    
+        self.production.event.update_data()
+
     def collect_assets(self):
         """
         Collect the assets for this job.
@@ -122,7 +123,6 @@ class Pipeline(asimov.pipeline.Pipeline):
             outputs["frames"] = frames
 
             self.production.event.meta['data']['data files'] = frames
-            self.production.event.update_data()
 
         if os.path.exists(f"{self.production.rundir}/psds/"):
             results_dir = glob.glob(f"{self.production.rundir}/psds/*")
@@ -136,7 +136,6 @@ class Pipeline(asimov.pipeline.Pipeline):
 
         # TODO: Need to have this check the sample rate before it saves to ledger
         # self.production.event.meta['data']['data files'] = frames
-        self.production.event.update_data()
 
         if os.path.exists(f"{self.production.rundir}/calibration/"):
             results_dir = glob.glob(f"{self.production.rundir}/calibration/*")
@@ -149,12 +148,10 @@ class Pipeline(asimov.pipeline.Pipeline):
             outputs["calibration"] = calibration
 
             self.production.event.meta['data']['calibration'] = calibration
-            self.production.event.update_data()
 
         if os.path.exists(f"{self.production.rundir}/posterior/"):
             results = glob.glob(f"{self.production.rundir}/posterior/*")
 
             outputs["samples"] = results[0]
 
-        
         return outputs
