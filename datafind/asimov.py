@@ -62,6 +62,8 @@ class Pipeline(asimov.pipeline.Pipeline):
             "batch_name": f"gwdata/{name}",
             "accounting_group_user": config.get('condor', 'user'),
             "accounting_group": self.production.meta['scheduler']["accounting group"],
+            "+flock_local": "True",
+            "+DESIRED_Sites": htcondor.classad.quote("nogrid"),
         }
 
         job = htcondor.Submit(description)
