@@ -2,6 +2,7 @@ import importlib
 import os
 import configparser
 import glob
+import pprint
 
 import asimov.pipeline
 
@@ -157,3 +158,14 @@ class Pipeline(asimov.pipeline.Pipeline):
             outputs["samples"] = results[0]
 
         return outputs
+
+    def html(self):
+        """Return the HTML representation of this pipeline."""
+        out = ""
+        if self.production.status in {"finished", "uploaded"}:
+            out += """<div class="asimov-pipeline">"""
+            pp = pprint.PrettyPrinter(indent=4)
+            out += f"<pre>{ pp.pprint(self.collect_assets()) }</pre>"
+            out += """</div>"""
+
+        return out
