@@ -41,9 +41,13 @@ def get_pesummary(components, settings):
         if settings['source']['type'] == "pesummary":
             location = settings['source']['location']
             location = glob.glob(location)[0]
-    
+    else:
+        raise ValueError("No metafile location found")
     data = read(location, package="gw")
-    analysis = settings['source']['analysis']
+    try:
+        analysis = settings['source']['analysis']
+    except KeyError:
+        raise ValueError("No source analysis found in config")
 
     for component in components:
     
