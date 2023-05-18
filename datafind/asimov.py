@@ -72,7 +72,11 @@ class Pipeline(asimov.pipeline.Pipeline):
         with set_directory(self.production.rundir):
             with open(f"{name}.sub", "w") as subfile:
                 subfile.write(job.__str__())
-                
+
+            full_command = f"""#! /bin/bash
+{ full_command }
+"""
+
             with open(f"{name}.sh", "w") as bashfile:
                 bashfile.write(str(full_command))
 
