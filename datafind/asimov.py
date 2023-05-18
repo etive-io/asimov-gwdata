@@ -102,8 +102,8 @@ class Pipeline(asimov.pipeline.Pipeline):
 
     def detect_completion(self):
         self.logger.info("Checking for completion.")
-        frames = self.collect_assets()
-        if len(list(frames.keys())) > 0:
+        assets = self.collect_assets()
+        if len(list(assets.keys())) > 0:
             self.logger.info("Outputs detected, job complete.")
             return True
         else:
@@ -119,8 +119,8 @@ class Pipeline(asimov.pipeline.Pipeline):
         Collect the assets for this job.
         """
         outputs = {}
-        if os.path.exists(f"{self.production.rundir}/frames/"):
-            results_dir = glob.glob(f"{self.production.rundir}/frames/*")
+        if os.path.exists(os.path.join(self.production.rundir, "frames")):
+            results_dir = glob.glob(os.path.join(self.production.rundir, "frames", "*"))
             frames = {}
 
             for frame in results_dir:
@@ -131,12 +131,12 @@ class Pipeline(asimov.pipeline.Pipeline):
 
             self.production.event.meta['data']['data files'] = frames
 
-        if os.path.exists(f"{self.production.rundir}/psds/"):
-            results_dir = glob.glob(f"{self.production.rundir}/psds/*")
+        if os.path.exists(os.path.join(self.production.rundir, "psds")):
+            results_dir = glob.glob(os.path.join(self.production.rundir, "psds", "*"))
             psds = {}
 
             for psd in results_dir:
-                ifo = psds.split(".")[0]
+                ifo = os.path.splitext(psds)[0]
                 psds[ifo] = psd
 
             outputs["psds"] = psds
@@ -144,20 +144,20 @@ class Pipeline(asimov.pipeline.Pipeline):
         # TODO: Need to have this check the sample rate before it saves to ledger
         # self.production.event.meta['data']['data files'] = frames
 
-        if os.path.exists(f"{self.production.rundir}/calibration/"):
-            results_dir = glob.glob(f"{self.production.rundir}/calibration/*")
+        if os.path.exists(os.path.join(self.production.rundir, "calibration")):
+            results_dir = glob.glob(os.path.join(self.production.rundir, "calibration", "*"))
             calibration = {}
 
             for cal in results_dir:
-                ifo = cal.split(".")[0]
+                ifo = os.path.splitext(cal)[0]
                 calibration[ifo] = cal
 
             outputs["calibration"] = calibration
 
             self.production.event.meta['data']['calibration'] = calibration
 
-        if os.path.exists(f"{self.production.rundir}/posterior/"):
-            results = glob.glob(f"{self.production.rundir}/posterior/*")
+        if os.path.exists(os.path.join(self.production.rundir, "posterior")):
+            results = glob.glob(os.path.join(self.production.rundir, "posterior", "*")
 
             outputs["samples"] = results[0]
 
