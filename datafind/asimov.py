@@ -157,7 +157,7 @@ class Pipeline(asimov.pipeline.Pipeline):
             self.production.event.meta['data']['calibration'] = calibration
 
         if os.path.exists(os.path.join(self.production.rundir, "posterior")):
-            results = glob.glob(os.path.join(self.production.rundir, "posterior", "*")
+            results = glob.glob(os.path.join(self.production.rundir, "posterior", "*"))
 
             outputs["samples"] = results[0]
 
