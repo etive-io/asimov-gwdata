@@ -1,9 +1,15 @@
 kind: analysis
 name: get-data
 pipeline: gwdata
+event time: 10
+interferometers: [H1, L1]
 download:
   - posterior
+  - calibration
 source:
   type: pesummary
   location: /home/daniel/<event>/test.h5
   analysis: C01:IMRPhenomXPHM
+calibration:
+  location: /home/asimov/calibration
+  type: ascii
