@@ -75,10 +75,7 @@ def get_data_frames(detectors, start, end, duration):
     urls = {}
     files = {}
     for detector in detectors:
-        det_urls = get_urls(detector=detector,
-                                  start=start,
-                                  end=end,
-                                  sample_rate=16384)
+        det_urls = get_urls(detector=detector, start=start, end=end, sample_rate=16384, format="gwf")
         det_urls_dur = []
         det_files = []
         for url in det_urls:
@@ -95,5 +92,5 @@ def get_data_frames(detectors, start, end, duration):
     click.echo("------------")
     for det, url in files.items():
         click.echo(click.style(f"{det}: ", bold=True), nl=False)
-        click.echo(url[0])    
+        click.echo(url[0])
     return urls
