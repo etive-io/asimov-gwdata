@@ -65,7 +65,7 @@ class Pipeline(asimov.pipeline.Pipeline):
             "+DESIRED_Sites": htcondor.classad.quote("nogrid"),
         }
 
-        if "accounting group" in self.meta:
+        if "accounting group" in self.production.meta:
             submit_description["accounting_group_user"] = config.get('condor', 'user')
             submit_description["accounting_group"] = self.production.meta["accounting group"],
         else:
