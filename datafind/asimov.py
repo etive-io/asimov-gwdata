@@ -61,12 +61,19 @@ class Pipeline(asimov.pipeline.Pipeline):
             "request_disk": "1024",
             "request_memory": "1024",
             "batch_name": f"gwdata/{name}",
-            "accounting_group_user": config.get('condor', 'user'),
-            "accounting_group": self.production.meta['scheduler']["accounting group"],
             "+flock_local": "True",
             "+DESIRED_Sites": htcondor.classad.quote("nogrid"),
         }
 
+        if "accounting group" in self.meta:
+            submit_description["accounting_group_user"] = config.get('condor', 'user')
+            submit_description["accounting_group"] = self.meta["accounting group"],
+        else:
+            self.logger.warning(
+                "This job does not supply any accounting information, which may prevent it running on some clusters."
+                )
+
+        
         job = htcondor.Submit(description)
         os.makedirs(self.production.rundir, exist_ok=True)
         with set_directory(self.production.rundir):
