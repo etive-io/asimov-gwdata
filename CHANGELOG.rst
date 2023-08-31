@@ -10,6 +10,6 @@ This release is not believed to introduce any backwards-incompatible changes.
 
 Merges
 ------
-+ `ligo!3<https://git.ligo.org/asimov/pipelines/gwdata/-/merge_requests/3>`_: Introduces the ability to find calibration files on the Caltech cluster.
++ `ligo!3 <https://git.ligo.org/asimov/pipelines/gwdata/-/merge_requests/3>`_: Introduces the ability to find calibration files on the Caltech cluster.
 
 
