@@ -29,6 +29,9 @@ dependencies = [
         "gwosc",
 	"asimov>=0.4.0",
 	"pesummary",
+	"numpy",
+	"requests",
+	"click",
 ]
 
 [project.optional-dependencies]

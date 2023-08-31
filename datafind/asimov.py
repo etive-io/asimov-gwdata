@@ -65,13 +65,15 @@ class Pipeline(asimov.pipeline.Pipeline):
             "+DESIRED_Sites": htcondor.classad.quote("nogrid"),
         }
 
-        if "accounting group" in self.production.meta:
-            submit_description["accounting_group_user"] = config.get('condor', 'user')
-            submit_description["accounting_group"] = self.production.meta["accounting group"],
+        accounting_group = self.production.meta.get("scheduler", {}).get("accounting group", None)
+
+        if accounting_group:
+            description["accounting_group_user"] = config.get('condor', 'user')
+            description["accounting_group"] = accounting_group
         else:
             self.logger.warning(
                 "This job does not supply any accounting information, which may prevent it running on some clusters."
-                )
+            )
 
         
         job = htcondor.Submit(description)
@@ -148,6 +150,7 @@ class Pipeline(asimov.pipeline.Pipeline):
 
             outputs["psds"] = psds
 
+            
         # TODO: Need to have this check the sample rate before it saves to ledger
         # self.production.event.meta['data']['data files'] = frames
 
