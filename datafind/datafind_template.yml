@@ -33,3 +33,9 @@ source:
   location: {{ production.meta['source']['location'] }}
   analysis: {{ production.meta['source']['analysis'] }}
 {% endif %}
+{% if production.meta contains 'locations' %}
+locations:
+  {% if production.meta['locations'] contains 'calibration directory' %}
+  calibration directory: {{ production.meta['locations']['calibration directory'] }}
+  {% endif %}
+{% endif %}

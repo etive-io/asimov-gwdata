@@ -16,6 +16,7 @@ import logging
 
 logger = logging.getLogger("gwdata")
 
+
 def copy_file(path, rename, directory):
     os.makedirs(directory, exist_ok=True)
     local_filename = rename
@@ -73,18 +74,26 @@ def get_o4_style_calibration(dir, time):
     return data
 
 
-def find_calibrations(time):
+def find_calibrations(time, base_dir=None):
     """
     Find the calibration file for a given time.
+
+    Parameters
+    ----------
+    time : number
+       The GPS time for which the nearest calibration should be returned.
+    base_dir: str
+       The base directory to search for calibration envelopes.
+       By default will use the default location.
     """
 
     observing_runs = {
-        "O1":  [1126623617, 1136649617],
-        "O2":  [1164556817, 1187733618],
+        "O1": [1126623617, 1136649617],
+        "O2": [1164556817, 1187733618],
         "O3a": [1238166018, 1253977218],
         "O3b": [1256655618, 1269363618],
         "O4a": [1368975618, 1384873218],
-        }
+    }
 
     def identify_run_from_gpstime(time):
         for run, (start, end) in observing_runs.items():
@@ -96,11 +105,13 @@ def find_calibrations(time):
 
     if run == "O1":
         logger.error("Cannot retrieve calibration undertainty envelopes for O1 events")
-    
+
     if run == "O2":
         # This looks like an O2 time
         logger.info("Retrieving O2 calibration envelopes")
-        dir = os.path.join(os.path.sep, "home", "cal", "public_html", "uncertainty", "O2C02")
+        dir = os.path.join(
+            os.path.sep, "home", "cal", "public_html", "uncertainty", "O2C02"
+        )
         virgo = os.path.join(
             os.path.sep,
             "home",
@@ -117,7 +128,9 @@ def find_calibrations(time):
     elif run in ("O3a", "O3b"):
         # This looks like an O3 time
         logger.info("Retrieving O3 calibration envelopes")
-        dir = os.path.join(os.path.sep, "home", "cal", "public_html", "uncertainty", "O3C01")
+        dir = os.path.join(
+            os.path.sep, "home", "cal", "public_html", "uncertainty", "O3C01"
+        )
         virgo = os.path.join(
             os.path.sep,
             "home",
@@ -135,7 +148,10 @@ def find_calibrations(time):
     elif run in ("O4a", "O4b"):
         # This looks like an O4 time
         logger.info("Retrieving O4 calibration envelopes")
-        dir = os.path.join(os.path.sep, "home", "cal", "public_html", "archive")
+        if base_dir:
+            dir = base_dir
+        else:
+            dir = os.path.join(os.path.sep, "home", "cal", "public_html", "archive")
         data = get_o4_style_calibration(dir, time)
         logger.debug(f"Found envelopes: {data}")
 
@@ -171,7 +187,8 @@ def get_data(settings):  # detectors, start, end, duration, frames):
         settings["data"].remove("frames")
 
     if "calibration" in settings["data"]:
-        find_calibrations(settings["time"]["start"])
+        directory = settings.get("locations", {}).get("calibration directory", None)
+        find_calibrations(settings["time"]["start"], directory)
         settings["data"].remove("calibration")
 
     if "posterior" in settings["data"]:
