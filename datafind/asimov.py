@@ -35,11 +35,23 @@ class Pipeline(asimov.pipeline.Pipeline):
         with open(ini, "r") as config_file:
             data = config_file.read()
         data = data.replace("<event>", self.production.event.name)
-        data = data.replace("<gid>", self.production.event.meta['ligo']['preferred event'])
+        data = data.replace(
+            "<gid>", self.production.event.meta["ligo"]["preferred event"]
+        )
+        if "illustrative result" in self.production.event.meta["ligo"]:
+            result = self.production.event.meta["ligo"]["illustrative result"]
+        else:
+            result = "online"
+        if not result:
+            result = "online"
+        data = data.replace(
+            "<illustrative_result>",
+            result
+        )
         self.logger.info(data)
         with open(ini, "w") as config_file:
             config_file.write(data)
-        
+
     def build_dag(self, dryrun=False):
         """
         Create a condor submission description.
@@ -47,7 +59,9 @@ class Pipeline(asimov.pipeline.Pipeline):
         name = self.production.name  # meta['name']
         ini = self.production.event.repository.find_prods(name, self.category)[0]
         self._substitute_locations_in_config()
-        executable = os.path.join(config.get('pipelines', 'environment'), 'bin', self._pipeline_command)
+        executable = os.path.join(
+            config.get("pipelines", "environment"), "bin", self._pipeline_command
+        )
         command = ["--settings", ini]
         full_command = executable + " " + " ".join(command)
         self.logger.info(full_command)
@@ -65,17 +79,18 @@ class Pipeline(asimov.pipeline.Pipeline):
             "+DESIRED_Sites": htcondor.classad.quote("nogrid"),
         }
 
-        accounting_group = self.production.meta.get("scheduler", {}).get("accounting group", None)
+        accounting_group = self.production.meta.get("scheduler", {}).get(
+            "accounting group", None
+        )
 
         if accounting_group:
-            description["accounting_group_user"] = config.get('condor', 'user')
+            description["accounting_group_user"] = config.get("condor", "user")
             description["accounting_group"] = accounting_group
         else:
             self.logger.warning(
                 "This job does not supply any accounting information, which may prevent it running on some clusters."
             )
 
-        
         job = htcondor.Submit(description)
         os.makedirs(self.production.rundir, exist_ok=True)
         with set_directory(self.production.rundir):
@@ -138,7 +153,7 @@ class Pipeline(asimov.pipeline.Pipeline):
 
             outputs["frames"] = frames
 
-            self.production.event.meta['data']['data files'] = frames
+            self.production.event.meta["data"]["data files"] = frames
 
         if os.path.exists(os.path.join(self.production.rundir, "psds")):
             results_dir = glob.glob(os.path.join(self.production.rundir, "psds", "*"))
@@ -150,12 +165,13 @@ class Pipeline(asimov.pipeline.Pipeline):
 
             outputs["psds"] = psds
 
-            
         # TODO: Need to have this check the sample rate before it saves to ledger
         # self.production.event.meta['data']['data files'] = frames
 
         if os.path.exists(os.path.join(self.production.rundir, "calibration")):
-            results_dir = glob.glob(os.path.join(self.production.rundir, "calibration", "*"))
+            results_dir = glob.glob(
+                os.path.join(self.production.rundir, "calibration", "*")
+            )
             calibration = {}
 
             for cal in results_dir:
@@ -164,7 +180,7 @@ class Pipeline(asimov.pipeline.Pipeline):
 
             outputs["calibration"] = calibration
 
-            self.production.event.meta['data']['calibration'] = calibration
+            self.production.event.meta["data"]["calibration"] = calibration
 
         if os.path.exists(os.path.join(self.production.rundir, "posterior")):
             results = glob.glob(os.path.join(self.production.rundir, "posterior", "*"))
