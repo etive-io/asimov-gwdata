@@ -159,7 +159,7 @@ class Pipeline(asimov.pipeline.Pipeline):
             calibration = {}
 
             for cal in results_dir:
-                ifo = os.path.splitext(cal)[0]
+                ifo = os.path.splitext(cal)[0].split(os.sep)[-1]
                 calibration[ifo] = cal
 
             outputs["calibration"] = calibration
