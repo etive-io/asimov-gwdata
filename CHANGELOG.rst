@@ -1,3 +1,19 @@
+0.3.0
+=====
+
+This is a feature release which introduces new functionality.
+
+Breaking changes
+-----------------
+
+This release is not believed to introduce any backwards-incompatible changes.
+
+Merges
+------
+
++ `ligo!6 <https://git.ligo.org/asimov/pipelines/gwdata/-/merge_requests/6>`_: Allows the use of the CBCFlow IllustrativeResult when searching for posteriors.
++ `ligo!5 <https://git.ligo.org/asimov/pipelines/gwdata/-/merge_requests/5>`_: Allows the base directory to be specified for the calibration file search.
+
 0.2.0
 =====
 
