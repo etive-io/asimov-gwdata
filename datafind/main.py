@@ -208,6 +208,9 @@ def get_pesummary(components, settings):
             location = glob.glob(location)[0]
     else:
         raise ValueError("No metafile location found")
+    click.echo("Posterior found")
+    click.echo("---------------")
+    click.echo(location)
     data = read(location, package="gw")
     try:
         analysis = settings["source"]["analysis"]
