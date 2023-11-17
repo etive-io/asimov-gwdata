@@ -195,7 +195,7 @@ class Pipeline(asimov.pipeline.Pipeline):
         if self.production.status in {"finished", "uploaded"}:
             out += """<div class="asimov-pipeline">"""
             pp = pprint.PrettyPrinter(indent=4)
-            out += f"<pre>{ pp.pprint(self.collect_assets()) }</pre>"
+            out += f"<pre>{ pp.pformat(self.collect_assets()) }</pre>"
             out += """</div>"""
 
         return out
