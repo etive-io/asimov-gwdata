@@ -36,9 +36,9 @@ class Pipeline(asimov.pipeline.Pipeline):
             data = config_file.read()
         data = data.replace("<event>", self.production.event.name)
         data = data.replace(
-            "<gid>", self.production.event.meta["ligo"]["preferred event"]
+            "<gid>", self.production.event.meta.get("ligo", {}).get("preferred event", "")
         )
-        if "illustrative result" in self.production.event.meta["ligo"]:
+        if "illustrative result" in self.production.event.meta.get("ligo", {}):
             result = self.production.event.meta["ligo"]["illustrative result"]
         else:
             result = "online"
