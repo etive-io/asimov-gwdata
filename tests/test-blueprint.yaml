@@ -1,0 +1,3 @@
+kind: analysis
+pipeline: gwdata
+name: get-data
