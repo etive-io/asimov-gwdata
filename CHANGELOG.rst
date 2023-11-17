@@ -1,3 +1,19 @@
+0.3.1
+=====
+
+This is a minor bug-fix release, and does not introduce new functionality.
+
+Breaking changes
+----------------
+
+This release is not believed to introduce any backwards-incompatible changes.
+
+Merges
+------
+
+`ligo!8 <https://git.ligo.org/asimov/pipelines/gwdata/-/merge_requests/8>`_: Removes an extraneous print to stdout.
+
+
 0.3.0
 =====
 
