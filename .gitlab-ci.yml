@@ -1,0 +1,92 @@
+include:
+  # https://computing.docs.ligo.org/gitlab-ci-templates/
+  - project: computing/gitlab-ci-templates
+    file:
+      # https://computing.docs.ligo.org/gitlab-ci-templates/conda/
+      - conda.yml
+      # https://computing.docs.ligo.org/gitlab-ci-templates/python/
+      - python.yml
+
+stages:
+  - test
+
+.test:
+  stage: test
+  extends:
+    # https://computing.docs.ligo.org/gitlab-ci-templates/conda/#.conda:base
+    - .conda:base
+    # https://computing.docs.ligo.org/gitlab-ci-templates/python/#.python:pytest
+    - .python:unittest
+  image: igwn/base:conda
+  variables:
+    # what Python package to track for coverage
+    COVERAGE_TARGET: "asimov-gwdata"
+    # set Python interpreter to conda env
+    PYTHON: "${CONDA_ENVS_PATH}/tests/bin/python"
+  before_script:
+    # configure conda
+    - !reference [".conda:base", before_script]
+    - "PYTHON_VERSION=${CI_JOB_NAME##*:}"
+    - mamba create -n tests
+          python=${PYTHON_VERSION}
+          matplotlib-base
+          lalsuite
+    - conda activate tests
+    # configure pip and pytest
+    - !reference [".python:unittest", before_script]
+  # script commands are set in .python:pytest template
+
+test:3.9:
+  extends: .test
+
+test:3.10:
+  extends: .test
+
+test:3.11:
+  extends: .test
+
+test:3.12:
+  allow_failure: True
+  extends: .test
+
+.asimov:
+  stage: test
+  extends:
+    # https://computing.docs.ligo.org/gitlab-ci-templates/conda/#.conda:base
+    - .conda:base
+    # https://computing.docs.ligo.org/gitlab-ci-templates/python/#.python:pytest
+    - .python:unittest
+  image: igwn/base:conda
+  variables:
+    # what Python package to track for coverage
+    COVERAGE_TARGET: "asimov-gwdata"
+    # set Python interpreter to conda env
+    PYTHON: "${CONDA_ENVS_PATH}/tests/bin/python"
+  before_script:
+    # configure conda
+    - !reference [".conda:base", before_script]
+    - "PYTHON_VERSION=${CI_JOB_NAME##*:}"
+    - mamba create -n tests
+          python=${PYTHON_VERSION}
+          matplotlib-base
+          lalsuite
+    - mamba install asimov
+    - python -m pip install --no-deps .
+
+  script:
+    - cd tests && bash asimov-test-script.sh    
+  
+asimov integration:3.10:
+  extends:
+    - .asimov
+
+
+
+conda-build:
+  variables:
+      GIT_SUBMODULE_STRATEGY: recursive
+  extends:
+    - .conda:build
+  script:
+    - export CONDA_RECIPE_DIR="${CI_PROJECT_DIR}/conda/recipe"
+    - !reference [".conda:build", script]
