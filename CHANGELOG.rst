@@ -1,3 +1,18 @@
+0.3.2
+=====
+
+This is a minor bug-fix release, and does not introduce new functionality.
+
+Breaking changes
+----------------
+
+This release is not believed to introduce any backwards-incompatible changes.
+
+Fixes
+-----
+
+This release reverts the removal of cache file generation when frame files are downloaded.
+
 0.3.1
 =====
 
