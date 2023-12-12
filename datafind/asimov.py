@@ -155,6 +155,17 @@ class Pipeline(asimov.pipeline.Pipeline):
 
             self.production.event.meta["data"]["data files"] = frames
 
+        if os.path.exists(os.path.join(self.production.rundir, "cache")):
+            results_dir = glob.glob(os.path.join(self.production.rundir, "cache", "*"))
+            cache = {}
+
+            for cache_file in results_dir:
+                ifo = cache_file.split("/")[-1].split(".")[0]
+                cache[ifo] = cache_file
+
+            outputs["caches"] = cache
+            self.production.event.meta['data']['cache files'] = cache
+            
         if os.path.exists(os.path.join(self.production.rundir, "psds")):
             results_dir = glob.glob(os.path.join(self.production.rundir, "psds", "*"))
             psds = {}
