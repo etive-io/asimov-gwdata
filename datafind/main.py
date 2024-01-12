@@ -63,6 +63,7 @@ def get_o4_style_calibration(dir, time, version="v1"):
                 f"{version}",
                 f"{ifo}",
                 "uncertainty",
+                f"{version}",
                 "*",
                 "*",
                 f"calibration_uncertainty_{ifo}_*.txt",
