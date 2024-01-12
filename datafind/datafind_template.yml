@@ -39,3 +39,6 @@ locations:
   calibration directory: {{ production.meta['locations']['calibration directory'] }}
   {% endif %}
 {% endif %}
+{%- if production.meta contains 'calibration version' %}
+calibration version: {{ production.meta['calibration version'] }}
+{%- endif %}

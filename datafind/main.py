@@ -54,7 +54,7 @@ def get_o3_style_calibration(dir, time):
     }
 
 
-def get_o4_style_calibration(dir, time):
+def get_o4_style_calibration(dir, time, version="v1"):
     data = {}
     for ifo in ["H1", "L1"]:
         file_list = glob.glob(
@@ -62,6 +62,7 @@ def get_o4_style_calibration(dir, time):
                 f"{dir}",
                 f"{ifo}",
                 "uncertainty",
+                f"{version}",
                 "*",
                 "*",
                 f"calibration_uncertainty_{ifo}_*.txt",
@@ -74,7 +75,7 @@ def get_o4_style_calibration(dir, time):
     return data
 
 
-def find_calibrations(time, base_dir=None):
+def find_calibrations(time, base_dir=None, version=None):
     """
     Find the calibration file for a given time.
 
@@ -152,7 +153,7 @@ def find_calibrations(time, base_dir=None):
             dir = base_dir
         else:
             dir = os.path.join(os.path.sep, "home", "cal", "public_html", "archive")
-        data = get_o4_style_calibration(dir, time)
+        data = get_o4_style_calibration(dir, time, version)
         logger.debug(f"Found envelopes: {data}")
 
     elif not run:
@@ -188,7 +189,7 @@ def get_data(settings):  # detectors, start, end, duration, frames):
 
     if "calibration" in settings["data"]:
         directory = settings.get("locations", {}).get("calibration directory", None)
-        find_calibrations(settings["time"]["start"], directory)
+        find_calibrations(settings["time"]["start"], directory, version=settings.get("calibration version", "v1"))
         settings["data"].remove("calibration")
 
     if "posterior" in settings["data"]:
