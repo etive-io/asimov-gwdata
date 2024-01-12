@@ -1,3 +1,21 @@
+0.3.3
+=====
+
+This is a minor bug-fix release, and does not introduce new functionality.
+
+Breaking changes
+----------------
+
+This release is not believed to introduce any backwards-incompatible changes.
+
+Merges
+------
+
++ `ligo!10<https://git.ligo.org/asimov/pipelines/gwdata/-/merge_requests/10>`_: This code fixes issues with the location of calibration uncertainty envelopes on IGWN resources.
+
+
+
+
 0.3.2
 =====
 
