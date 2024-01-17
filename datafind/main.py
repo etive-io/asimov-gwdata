@@ -60,7 +60,6 @@ def get_o4_style_calibration(dir, time, version="v1"):
         file_list = glob.glob(
             os.path.join(
                 f"{dir}",
-                f"{version}",
                 f"{ifo}",
                 "uncertainty",
                 f"{version}",
