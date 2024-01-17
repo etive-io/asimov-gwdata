@@ -1,3 +1,20 @@
+0.3.4
+=====
+
+
+This is a minor bug-fix release, and does not introduce new functionality.
+
+Breaking changes
+----------------
+
+This release is not believed to introduce any backwards-incompatible changes.
+
+Merges
+------
+
++ `ligo!12<https://git.ligo.org/asimov/pipelines/gwdata/-/merge_requests/12>`_: Fixes a mistake in the calibration file path.
+
+
 0.3.3
 =====
 
