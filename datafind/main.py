@@ -54,7 +54,7 @@ def get_o3_style_calibration(dir, time):
     }
 
 
-def get_o4_style_calibration(dir, time, version={"H1":"v1", "L1":"v1"}):
+def get_o4_style_calibration(dir, time, version="v1"):
     data = {}
     for ifo in ["H1", "L1"]:
         if isinstance(version, dict):
