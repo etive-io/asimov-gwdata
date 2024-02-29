@@ -1,3 +1,24 @@
+0.4.0
+=====
+
+This is a feature release which introduces new functionality.
+
+Breaking changes
+-----------------
+
+This release is not believed to introduce any backwards-incompatible changes.
+
+New feature
+-----------
+
++ Ability to specify the calibration version for multiple interferometers independently (e.g. specifying v1 for L1 and v0 for H1)
+
+Merges
+------
+
++ `ligo!13 <https://git.ligo.org/asimov/pipelines/gwdata/-/merge_requests/13>`_: Allows calibration version to be specified by dictionary.
+
+
 0.3.4
 =====
 
