@@ -57,12 +57,16 @@ def get_o3_style_calibration(dir, time):
 def get_o4_style_calibration(dir, time, version="v1"):
     data = {}
     for ifo in ["H1", "L1"]:
+        if isinstance(version, dict):
+            ifo_version = version.get(ifo)
+        else:
+            ifo_version = version
         file_list = glob.glob(
             os.path.join(
                 f"{dir}",
                 f"{ifo}",
                 "uncertainty",
-                f"{version}",
+                f"{ifo_version}",
                 "*",
                 "*",
                 f"calibration_uncertainty_{ifo}_*.txt",
