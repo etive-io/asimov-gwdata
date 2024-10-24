@@ -47,7 +47,7 @@ include:
       
   - component: $CI_SERVER_FQDN/computing/gitlab/components/conda/build@1.0.3
     inputs:
-      stage: build test
+      stage: test
       recipe_dir: $CI_PROJECT_DIR/conda/recipe
 
 # test:3.10:
