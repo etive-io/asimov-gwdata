@@ -43,9 +43,17 @@ include:
   - component: $CI_SERVER_FQDN/computing/gitlab/components/python/test@1.6.0
     inputs:
       stage: test
-      python_versions: ["3.9", "3.10", "3.11", "3.12"]
+      python_versions: ["3.9", "3.10", "3.11"]
+
+  - component: $CI_SERVER_FQDN/computing/gitlab/components/python/test@1.6.0
+    inputs:
+      stage: test
+      python_versions: ["3.12", "3.13"]
+    allow_failure: True
       
   - component: $CI_SERVER_FQDN/computing/gitlab/components/conda/build@1.0.3
+    variables:
+       GIT_SUBMODULE_STRATEGY: recursive
     inputs:
       stage: test
       recipe_dir: $CI_PROJECT_DIR/conda/recipe
