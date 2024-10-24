@@ -82,11 +82,14 @@ asimov integration:3.10:
 
 
 
-conda-build:
-  variables:
-      GIT_SUBMODULE_STRATEGY: recursive
-  extends:
-    - .conda:build
-  script:
-    - export CONDA_RECIPE_DIR="${CI_PROJECT_DIR}/conda/recipe"
-    - !reference [".conda:build", script]
+include:
+  - component: $CI_SERVER_FQDN/computing/gitlab/components/conda/build@1.0.3
+
+# conda-build:
+#   variables:
+#       GIT_SUBMODULE_STRATEGY: recursive
+#   extends:
+#     - .conda:build
+#   script:
+#     - export CONDA_RECIPE_DIR="${CI_PROJECT_DIR}/conda/recipe"
+#     - !reference [".conda:build", script]
