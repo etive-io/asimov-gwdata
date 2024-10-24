@@ -84,7 +84,8 @@ asimov integration:3.10:
 
 include:
   - component: $CI_SERVER_FQDN/computing/gitlab/components/conda/build@1.0.3
-    recipe_dir: $CI_PROJECT_DIR/conda/recipe
+    inputs:
+      recipe_dir: $CI_PROJECT_DIR/conda/recipe
 # conda-build:
 #   variables:
 #       GIT_SUBMODULE_STRATEGY: recursive
