@@ -5,6 +5,8 @@ import glob
 
 import yaml
 from contextlib import contextmanager
+from pathlib import Path
+
 import numpy as np
 
 from gwosc.locate import get_urls
