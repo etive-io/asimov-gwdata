@@ -9,7 +9,6 @@ import numpy as np
 
 from gwosc.locate import get_urls
 from pesummary.io import read
-from asimov.utils import set_directory
 import click
 
 import logging
