@@ -4,7 +4,7 @@ import os
 import glob
 
 import yaml
-
+from contextlib import contextmanager
 import numpy as np
 
 from gwosc.locate import get_urls
@@ -14,7 +14,31 @@ import click
 
 import logging
 
+import h5py
+import numpy as np
+
 logger = logging.getLogger("gwdata")
+
+@contextmanager
+def set_directory(path: (Path, str)):
+    """
+    Change to a different directory for the duration of the context.
+
+    Args:
+        path (Path): The path to the cwd
+
+    Yields:
+        None
+    """
+
+    origin = Path().absolute()
+    try:
+        logger.info(f"Working temporarily in {path}")
+        os.chdir(path)
+        yield
+    finally:
+        os.chdir(origin)
+        logger.info(f"Now working in {origin} again")
 
 
 def copy_file(path, rename, directory):
@@ -193,7 +217,11 @@ def get_data(settings):  # detectors, start, end, duration, frames):
 
     if "calibration" in settings["data"]:
         directory = settings.get("locations", {}).get("calibration directory", None)
-        find_calibrations(settings["time"]["start"], directory, version=settings.get("calibration version", "v1"))
+        find_calibrations(
+            settings["time"]["start"],
+            directory,
+            version=settings.get("calibration version", "v1"),
+        )
         settings["data"].remove("calibration")
 
     if "posterior" in settings["data"]:
@@ -270,10 +298,22 @@ def get_data_frames(detectors, start, end, duration):
             cache_string += f"{cf[0]}\t{cf[1]}\t{cf[2]}\t{cf[3]}\tfile://localhost{os.path.abspath(frame_file)}\n"
         with open(os.path.join("cache", f"{detector}.cache"), "w") as cache_file:
             cache_file.write(cache_string)
-        
+
     click.echo("Frames found")
     click.echo("------------")
     for det, url in files.items():
         click.echo(click.style(f"{det}: ", bold=True), nl=False)
         click.echo(url[0])
     return urls
+
+
+def extract_psd_files_from_metafile(metafile, dataset=None):
+    """
+    Extract the PSD files from the PESummary metafile, and save them
+    in txt format as expected by the majority of pipelines.
+    """
+    output_dictionary = {}
+    with h5py.File(metafile) as metafile_handle:
+        for ifo in metafile_handle[dataset]["psds"]:
+            output_dictionary[ifo] = np.array(metafile_handle[dataset]["psds"][ifo])
+    return output_dictionary
