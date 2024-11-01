@@ -8,7 +8,7 @@ It's not really intended as a stand-alone pipeline, but you will see it being us
 
 .. toctree::
    :maxdepth: 2
-   :caption: Contents:
+   :caption: User Guide
 
    installation
    frames
