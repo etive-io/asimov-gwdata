@@ -9,6 +9,7 @@ include:
 
 stages:
   - test
+  - build
 
 pages:
   stage: build
