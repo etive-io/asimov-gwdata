@@ -10,6 +10,18 @@ include:
 stages:
   - test
 
+pages:
+  stage: build
+  script:
+  - pip install -r docs-requirements.txt
+  - pip install .
+  - sphinx-build docs/source public
+  artifacts:
+    paths:
+    - public
+  only:
+  - master
+  
 # .test:
 #   stage: test
 #   extends:

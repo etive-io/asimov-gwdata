@@ -1,0 +1,8 @@
+kentigern >= 0.3.0
+numpydoc
+sphinx
+sphinx-click
+sphinxcontrib-httpdomain
+sphinxcontrib-httpexample 
+sphinx-jsonschema
+sphinx-multiversion
