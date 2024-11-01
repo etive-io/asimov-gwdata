@@ -1,3 +1,5 @@
+image: python:3.9
+
 include:
   # https://computing.docs.ligo.org/gitlab-ci-templates/
   - project: computing/gitlab-ci-templates
