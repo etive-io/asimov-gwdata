@@ -22,6 +22,8 @@
 
 
 interferometers: {{ ifos }}
+gracedb:
+  gid: {{ production.meta['ligo']['preferred event'] }}
 time:
   start: {{ production.meta['event time'] | plus: -1 }} 
   end:  {{ production.meta['event time'] | plus: 1 }} 
