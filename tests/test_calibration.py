@@ -37,6 +37,13 @@ class VirgoCalibration(unittest.TestCase):
 
     def test_columns(self):
         """Test that the columns match what bilby anticipates"""
-        columns = ["Frequency", "Median mag", "Median phase (Rad)", "16th percentile mag",
-                   "16th percentile phase",  "84th percentile mag",   "84th percentile phase"]
+        columns = ["Frequency", "Median mag", "Median phase (Rad)", "16th percentile mag", "16th percentile phase",  "84th percentile mag",   "84th percentile phase"]
         self.assertEqual(self.envelope.columns, columns)
+
+    def test_plot(self):
+        """Create a plot of the envelope"""
+        self.envelope.plot("test_envelope.png")
+
+    def test_save_file(self):
+        """Create a text file of the envelope."""
+        self.envelope.to_file("test_envelope.txt")

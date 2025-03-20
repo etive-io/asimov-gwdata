@@ -5,6 +5,7 @@ Code to work with calibration files.
 from gwpy.frequencyseries import FrequencySeries
 from gwpy.timeseries import TimeSeries
 import numpy as np
+import matplotlib.pyplot as plt
 
 class CalibrationUncertaintyEnvelope:
     """
@@ -52,7 +53,7 @@ class CalibrationUncertaintyEnvelope:
 
         return envelope
 
-    def frequency_domain_envelope(self, frame):
+    def frequency_domain_envelope(self, frame, window=np.hamming):
         td_data = self._frame_to_envelopes(frame)
 
         td_data[0,:] -= td_data[0,0]
@@ -63,7 +64,7 @@ class CalibrationUncertaintyEnvelope:
         fd_data = np.zeros((len(frequencies), td_data.shape[0])).T
         fd_data[0,:] = frequencies
         for i, parameter in enumerate(td_data[1:,:]):
-            fd_data[i,:] = np.fft.rfft(parameter)
+            fd_data[i+1,:] = np.fft.rfft(window(N)*parameter)
 
         return fd_data
 
@@ -82,11 +83,25 @@ class CalibrationUncertaintyEnvelope:
         if frequency_domain:
             envelope = self.data
         else:
-            raise NotImplementedError("Time domain envelopes have not yet been implemented in asimov-gwdata".)
-
-        np.savetxt(filename, envelope, header=["Frequency", "Median mag", "Median phase (Rad)", "16th percentile mag", "16th percentile phase",  "84th percentile mag",   "84th percentile phase"])
-
-
-
-
+            raise NotImplementedError("Time domain envelopes have not yet been implemented in asimov-gwdata.")
         
+        np.savetxt(filename, envelope.T, comments="\t".join(["Frequency", "Median mag", "Median phase (Rad)", "16th percentile mag", "16th percentile phase",  "84th percentile mag",   "84th percentile phase"]))
+        
+    def plot(self, filename):
+        """
+        Plot the calibration envelope.
+        """
+
+        f, ax = plt.subplots(2,1, dpi=300, figsize=(4, np.sqrt(4)))
+
+        ax[0].plot(self.data[0,:], self.data[1,:])
+        ax[0].fill_between(self.data[0,:], 100*self.data[3,:], 100*self.data[5,:],
+                           alpha=0.5)
+        ax[0].set_ylim([-7, 7])
+        
+        ax[1].plot(self.data[0,:], self.data[2,:])
+        ax[1].fill_between(self.data[0,:], self.data[4,:]*1e3, self.data[6,:]*1e3, alpha=0.5)
+
+        ax[1].set_ylim([-4, 4])
+
+        f.savefig(filename)
