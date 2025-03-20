@@ -66,3 +66,27 @@ class CalibrationUncertaintyEnvelope:
             fd_data[i,:] = np.fft.rfft(parameter)
 
         return fd_data
+
+    def to_file(self, filename, frequency_domain=True):
+        """
+        Write the envelope to an ascii file in the format expected by e.g. bilby.
+
+        Parameters
+        ----------
+        filename: str
+          The location the file should be written to.
+        frequency_domain: bool
+          If True the frequency-domain representation of the envelope is written.
+        """
+
+        if frequency_domain:
+            envelope = self.data
+        else:
+            raise NotImplementedError("Time domain envelopes have not yet been implemented in asimov-gwdata".)
+
+        np.savetxt(filename, envelope, header=["Frequency", "Median mag", "Median phase (Rad)", "16th percentile mag", "16th percentile phase",  "84th percentile mag",   "84th percentile phase"])
+
+
+
+
+        
