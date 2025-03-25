@@ -2,6 +2,7 @@ import requests
 import shutil
 import os
 import glob
+import re
 
 import yaml
 from contextlib import contextmanager
@@ -86,7 +87,7 @@ def get_o4_style_calibration(dir, time, version="v1"):
             ifo_version = version.get(ifo)
         else:
             ifo_version = version
-        file_list = glob.glob(
+        file_list_globbed = glob.glob(
             os.path.join(
                 f"{dir}",
                 f"{ifo}",
@@ -94,13 +95,20 @@ def get_o4_style_calibration(dir, time, version="v1"):
                 f"{ifo_version}",
                 "*",
                 "*",
-                f"calibration_uncertainty_{ifo}_*.txt",
+                f"calibration_uncertainty_{ifo}_*[0-9].txt",
             )
         )
-        files_by_time = {int(datum[-14:-4]): datum for datum in file_list}
-        times = np.array(list(files_by_time.keys())) - time
-        data_file = list(files_by_time.items())[np.argmin(np.abs(times))]
-        data[ifo] = data_file[1]
+        regex_string = fr".*\/calibration_uncertainty_{ifo}_([0-9]{{1,}}).txt"
+        regex = re.compile(regex_string)
+        files_by_time = {}
+        for calib_file in file_list_globbed:
+            m = regex.match(calib_file)
+            if m:
+                files_by_time[int(m.group(1))] = calib_file
+        if len(files_by_time) > 0:
+            times = np.array(list(files_by_time.keys())) - time
+            data_file = list(files_by_time.items())[np.argmin(np.abs(times))]
+            data[ifo] = data_file[1]
     return data
 
 
@@ -192,11 +200,15 @@ def find_calibrations(time, base_dir=None, version=None):
     for ifo, envelope in data.items():
         copy_file(envelope, rename=f"{ifo}.txt", directory="calibration")
 
-    click.echo("Calibration uncertainty envelopes found")
-    click.echo("---------------------------------------")
-    for det, url in data.items():
-        click.echo(click.style(f"{det}: ", bold=True), nl=False)
-        click.echo(f"{url}")
+    if len(data) == 0:
+        logger.error(f"No calibration uncertainty envelopes found.")
+    else:
+        
+        click.echo("Calibration uncertainty envelopes found")
+        click.echo("---------------------------------------")
+        for det, url in data.items():
+            click.echo(click.style(f"{det}: ", bold=True), nl=False)
+            click.echo(f"{url}")
 
     return data
 
