@@ -22,4 +22,24 @@ class CalibrationDataTests(unittest.TestCase):
         mock_glob.return_value = file_list
         
         output = get_o4_style_calibration(dir="test", time=1370242226.4)
-        self.assertEqual(output['L1'], file_list[1])
+        self.assertEqual(output['H1'], file_list[1])
+
+    @patch('glob.glob')
+    def test_lookup_with_added_extras(self, mock_glob):
+        """Test to check that the nearest uncertainty file is correctly identified."""
+        file_list =  [
+            "/home/cal/public_html/archive/H1/uncertainty/1370/242226/calibration_uncertainty_H1_1370242224.txt",
+            "/home/cal/public_html/archive/H1/uncertainty/1370/242226/calibration_uncertainty_H1_1370242226.txt",
+            "/home/cal/public_html/archive/H1/uncertainty/1370/242226/calibration_uncertainty_H1_1370242228.txt"
+            "/home/cal/public_html/archive/H1/uncertainty/1370/242226/calibration_uncertainty_H1_1_pydarm2.txt",
+            "/home/cal/public_html/archive/H1/uncertainty/1370/242226/calibration_uncertainty_H1_random.txt",
+            "/home/cal/public_html/archive/H1/uncertainty/1370/242226/calibration_uncertainty_H1_90.txt",
+
+            "/home/cal/public_html/archive/L1/uncertainty/1370/242226/calibration_uncertainty_L1_1370242226.txt",
+        ]
+
+        mock_glob.return_value = file_list
+        
+        output = get_o4_style_calibration(dir="test", time=1370242226.4)
+        self.assertEqual(output['H1'], file_list[1])
+        self.assertEqual(output['L1'], file_list[-1])
