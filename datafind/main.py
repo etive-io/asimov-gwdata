@@ -9,7 +9,7 @@ from pathlib import Path
 
 import numpy as np
 
-from gwosc.locate import get_urls
+
 from pesummary.io import read
 import click
 
@@ -17,6 +17,8 @@ import logging
 
 import h5py
 import numpy as np
+
+from .frames import get_data_frames_gwosc
 
 logger = logging.getLogger("gwdata")
 
@@ -48,15 +50,6 @@ def copy_file(path, rename, directory):
     shutil.copyfile(path, os.path.join(directory, local_filename))
     return local_filename
 
-
-def download_file(url, directory="frames"):
-    os.makedirs(directory, exist_ok=True)
-    local_filename = url.split("/")[-1]
-    with requests.get(url, stream=True) as r:
-        with open(os.path.join(directory, local_filename), "wb") as f:
-            shutil.copyfileobj(r.raw, f)
-
-    return local_filename
 
 
 def get_o3_style_calibration(dir, time):
@@ -208,7 +201,7 @@ def get_data(settings):  # detectors, start, end, duration, frames):
         settings = yaml.safe_load(file_handle)
 
     if "frames" in settings["data"]:
-        get_data_frames(
+        get_data_frames_gwosc(
             settings["interferometers"],
             settings["time"]["start"],
             settings["time"]["end"],
@@ -271,41 +264,6 @@ def get_pesummary(components, settings):
                     psd.save_to_file(f"{ifo}.dat", delimiter="\t")
 
 
-def get_data_frames(detectors, start, end, duration):
-    urls = {}
-    files = {}
-    for detector in detectors:
-        det_urls = get_urls(
-            detector=detector, start=start, end=end, sample_rate=16384, format="gwf"
-        )
-        det_urls_dur = []
-        det_files = []
-        for url in det_urls:
-            duration_u = int(url.split("/")[-1].split(".")[0].split("-")[-1])
-            filename = url.split("/")[-1]
-            if duration_u == duration:
-                det_urls_dur.append(url)
-                download_file(url)
-                det_files.append(filename)
-        urls[detector] = det_urls_dur
-        files[detector] = det_files
-
-    os.makedirs("cache", exist_ok=True)
-    for detector in detectors:
-        cache_string = ""
-        for frame_file in files[detector]:
-            cf = frame_file.split(".")[0].split("-")
-            frame_file = os.path.join("frames", frame_file)
-            cache_string += f"{cf[0]}\t{cf[1]}\t{cf[2]}\t{cf[3]}\tfile://localhost{os.path.abspath(frame_file)}\n"
-        with open(os.path.join("cache", f"{detector}.cache"), "w") as cache_file:
-            cache_file.write(cache_string)
-
-    click.echo("Frames found")
-    click.echo("------------")
-    for det, url in files.items():
-        click.echo(click.style(f"{det}: ", bold=True), nl=False)
-        click.echo(url[0])
-    return urls
 
 
 def extract_psd_files_from_metafile(metafile, dataset=None):
