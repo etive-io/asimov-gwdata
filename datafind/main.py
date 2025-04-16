@@ -17,7 +17,8 @@ import click
 import logging
 
 import h5py
-import numpy as np
+
+from .gracedb import GraceDB
 
 logger = logging.getLogger("gwdata")
 
@@ -240,6 +241,9 @@ def get_data(settings):  # detectors, start, end, duration, frames):
     if "posterior" in settings["data"]:
         get_pesummary(components=settings["data"], settings=settings)
         settings["data"].remove("posterior")
+
+    if "coinc file" in settings["data"]:
+        GraceDB(settings['gracedb']['gid']).download_file("coinc.xml")
 
 
 def get_pesummary(components, settings):
