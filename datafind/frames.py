@@ -48,9 +48,9 @@ def get_data_frames_ligo(types,
                 session=sess,
             )
     if download:
-        for det_urls in urls.values():
+        for ifo, det_urls in urls.items():
             for url in det_urls:
-                download_file(url, directory="frames")
+                files[ifo] = download_file(url, directory="frames")
     return urls, files
 
 def get_data_frames_gwosc(detectors, start, end, duration):
