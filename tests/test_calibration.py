@@ -26,7 +26,7 @@ class CalibrationDataTests(unittest.TestCase):
         self.assertEqual(output['L1'], file_list[1])
         self.assertEqual(output['H1'], file_list[1])
 
-@patch('glob.glob')
+    @patch('glob.glob')
     def test_lookup_with_added_extras(self, mock_glob):
         """Test to check that the nearest uncertainty file is correctly identified."""
         file_list =  [
