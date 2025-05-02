@@ -40,6 +40,10 @@ docs = [
 	"kentigern",
 ]
 
+rift = [
+     "rift"
+]
+
 [project.scripts]
 #gwdata = "datafind:main"
 gwdata = "datafind.main:get_data"
