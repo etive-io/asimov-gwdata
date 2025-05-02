@@ -167,7 +167,7 @@ class Pipeline(asimov.pipeline.Pipeline):
             self.production.event.meta['data']['cache files'] = cache
             
         if os.path.exists(os.path.join(self.production.rundir, "psds")):
-            results_dir = glob.glob(os.path.join(self.production.rundir, "psds", "*"))
+            results_dir = glob.glob(os.path.join(self.production.rundir, "psds", "*.dat"))
             psds = {}
 
             for psd in results_dir:
@@ -175,6 +175,15 @@ class Pipeline(asimov.pipeline.Pipeline):
                 psds[ifo] = psd
 
             outputs["psds"] = psds
+                
+            results_dir = glob.glob(os.path.join(self.production.rundir, "psds", "*.xml.gz"))
+            xml_psds = {}
+
+            for psd in results_dir:
+                ifo = os.path.splitext(psds)[0]
+                xml_psds[ifo] = psd
+
+            outputs["xml psds"] = xml_psds
 
         # TODO: Need to have this check the sample rate before it saves to ledger
         # self.production.event.meta['data']['data files'] = frames
