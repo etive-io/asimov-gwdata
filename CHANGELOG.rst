@@ -1,3 +1,41 @@
+0.5.0
+=====
+
+This is a feature release which introduces new functionality.
+
+Breaking changes
+----------------
+
+This release is not believed to introduce any backwards-incompatible changes.
+
+
+New feature
+-----------
+
++ Ability to read PSD files from PESummary metafiles (e.g. existing data releases) and turn these into ASCII or XML format representations as required by parameter estimation pipelines.
+
+Merges
+------
+
++ `ligo!15 <https://git.ligo.org/asimov/pipelines/gwdata/-/merge_requests/15>`_: Allows PSD files to be read from PESummary metafiles and converted for use in pipelines.
++ `ligo!17 <https://git.ligo.org/asimov/pipelines/gwdata/-/merge_requests/17>`_: Corrected the dates of O4 observing runs.
++ `ligo!18 <https://git.ligo.org/asimov/pipelines/gwdata/-/merge_requests/18>`_: Adds provisional support for reading calibration uncertainty envelopes from frame files.
+
+0.4.1
+=====
+
+This is a bug fix release.
+
+Breaking changes
+----------------
+
+This release is not believed to introduce any backwards-incompatible changes.
+
+Merges
+------
+
++ `ligo!16 <https://git.ligo.org/asimov/pipelines/gwdata/-/merge_requests/16>`_: Allows units to be added to memory and disk requests, and these to be specified in blueprints.
+
 0.4.0
 =====
 
