@@ -1,4 +1,5 @@
 import os
+from urllib.parse import urlparse, unquote
 import shutil
 
 import requests
@@ -20,11 +21,12 @@ def download_file(url, directory="frames", name=None):
       downloaded file. Defaults to "frames".
     """
     os.makedirs(directory, exist_ok=True)
+    parsed_url = urlparse(url)
     if not name:
-        local_filename = url.split("/")[-1]
+        local_filename = os.path.basename(parsed_url.path)
     else:
         local_filename = name
-    if url[:4] == "file":
+    if parsed_url.scheme == "file":
         shutil.copyfile(url[16:], os.path.join(directory, local_filename))
     else:
         with requests.get(url, stream=True) as r:
