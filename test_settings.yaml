@@ -9,3 +9,8 @@ time:
 data:
   - frames
   - posterior
+  - psds
+source:
+  type: pesummary
+  analysis: C01:IMRPhenomXPHM
+  location: tests/GW150914.hdf5
