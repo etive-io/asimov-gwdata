@@ -16,8 +16,8 @@ import click
 
 import logging
 
-import h5py
-import numpy as np
+from .metafiles import Metafile
+
 
 logger = logging.getLogger("gwdata")
 
@@ -126,11 +126,15 @@ def find_calibrations(time, base_dir=None, version=None):
     """
 
     observing_runs = {
-        "O1": [1126623617, 1136649617],
-        "O2": [1164556817, 1187733618],
-        "O3a": [1238166018, 1253977218],
-        "O3b": [1256655618, 1269363618],
-        "O4a": [1368975618, 1384873218],
+        "O1":   [1126623617, 1136649617],
+        "O2":   [1164556817, 1187733618],
+        "O3a":  [1238166018, 1253977218],
+        "O3b":  [1256655618, 1269363618],
+        "ER15": [1366556418, 1368975618], #  2023-04-26 15:00 to 2023-05-24 15:00
+        "O4a":  [1368975618, 1389456018], #  2023-05-24 15:00 to 2024-01-16 16:00
+        "ER16": [1394982018, 1396792818], #  2024-03-20 15:00 to 2024-04-10 14:00
+        "O4b":  [1396792818, 1422118818], #  2024-04-10 14:00 to 2025-01-28 17:00
+        "O4c":  [1422118818, 1443884418], #  2025-01-28 17:00 to 2025-10-07 15:00
     }
 
     def identify_run_from_gpstime(time):
@@ -241,6 +245,22 @@ def get_data(settings):  # detectors, start, end, duration, frames):
         get_pesummary(components=settings["data"], settings=settings)
         settings["data"].remove("posterior")
 
+    if "psds" in settings["data"]:
+        # Gather a PSD from a PESummary Metafile
+        if "source" in settings:
+            if settings["source"]["type"] == "pesummary":
+                summaryfile = settings["source"]["location"]
+                analysis = settings["source"].get("analysis", None)
+                os.makedirs("psds", exist_ok=True)
+                with Metafile(summaryfile) as metafile:
+                    for ifo, psd in metafile.psd(analysis).items():
+                        psd.to_ascii(os.path.join("psds", f"{ifo}.dat"))
+                        psd.to_xml()
+            else:
+                logger.error("PSDs can only be extracted from PESummary metafiles at present.")
+                raise ValueError("The source of PSDs must be a PESummary metafile.")
+        else:
+            raise ValueError("No metafile location found")
 
 def get_pesummary(components, settings):
     """
@@ -274,14 +294,6 @@ def get_pesummary(components, settings):
             shutil.copy(location, os.path.join("posterior", "metafile.h5"))
             # analysis_data = data.samples_dict[analysis]
             # analysis_data.write(package="gw", file_format="dat", filename="posterior/posterior_samples.dat")
-
-        if component == "psds":
-            os.makedirs("psds", exist_ok=True)
-            analysis_data = data.psd[analysis]
-            for ifo, psd in analysis_data.items():
-                with set_directory("psds"):
-                    psd.save_to_file(f"{ifo}.dat", delimiter="\t")
-
 
 def get_data_frames(detectors, start, end, duration):
     urls = {}
