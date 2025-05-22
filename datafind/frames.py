@@ -9,7 +9,8 @@ from .utils import download_file
 
 def get_data_frames_private(types,
                             start, end,
-                            download=False):
+                            download=False,
+                            host="datafind.igwn.org"):
     """
     Gather data frames which are not available via GWOSC.
 
@@ -45,7 +46,7 @@ def get_data_frames_private(types,
                 type.split(":")[-1],
                 start,
                 end,
-                host="datafind.igwn.org",
+                host=host,
                 session=sess,
             )
     if download:
