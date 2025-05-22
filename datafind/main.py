@@ -187,7 +187,7 @@ def find_calibrations(time, base_dir=None, version=None):
         data["V1"] = virgo
         logger.debug(f"Found envelopes: {data}")
 
-    elif run in ("O4a", "O4b"):
+    elif run in ("O4a", "O4b", "O4c"):
         # This looks like an O4 time
         logger.info("Retrieving O4 calibration envelopes")
         if base_dir:
@@ -207,7 +207,7 @@ def find_calibrations(time, base_dir=None, version=None):
     if len(data) == 0:
         logger.error(f"No calibration uncertainty envelopes found.")
     else:
-        
+
         click.echo("Calibration uncertainty envelopes found")
         click.echo("---------------------------------------")
         for det, url in data.items():
