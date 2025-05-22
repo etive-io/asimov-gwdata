@@ -6,11 +6,12 @@ from gwosc.locate import get_urls
 from gwdatafind import find_urls, Session
 from .utils import download_file
 
-def get_data_frames_ligo(types,
-                         start, end,
-                         download=False):
+
+def get_data_frames_private(types,
+                            start, end,
+                            download=False):
     """
-    Gather LIGO data frames.
+    Gather data frames which are not available via GWOSC.
 
     Parameters
     ----------
@@ -32,7 +33,7 @@ def get_data_frames_ligo(types,
     files : dict
       The dictionary of downloaded files indexed by detector name.
     """
-    
+
     urls = {}
     files = {}
 
@@ -52,6 +53,7 @@ def get_data_frames_ligo(types,
             for url in det_urls:
                 files[ifo] = download_file(url, directory="frames")
     return urls, files
+
 
 def get_data_frames_gwosc(detectors, start, end, duration):
     """
