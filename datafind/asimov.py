@@ -165,17 +165,17 @@ class Pipeline(asimov.pipeline.Pipeline):
 
             outputs["caches"] = cache
             self.production.event.meta['data']['cache files'] = cache
-            
+
         if os.path.exists(os.path.join(self.production.rundir, "psds")):
             results_dir = glob.glob(os.path.join(self.production.rundir, "psds", "*.dat"))
             psds = {}
 
             for psd in results_dir:
-                ifo = os.path.splitext(psds)[0]
+                ifo = os.path.splitext(psd)[0]
                 psds[ifo] = psd
 
             outputs["psds"] = psds
-                
+
             results_dir = glob.glob(os.path.join(self.production.rundir, "psds", "*.xml.gz"))
             xml_psds = {}
 

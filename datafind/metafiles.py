@@ -2,6 +2,8 @@
 Functions to manipulate PESummary metafiles.
 """
 
+import shutil
+import logging
 import h5py
 import contextlib
 import subprocess
@@ -9,6 +11,8 @@ import os
 import numpy as np
 
 from .calibration import CalibrationUncertaintyEnvelope
+
+logger = logging.getLogger("gwdata")
 
 class Metafile(contextlib.AbstractContextManager):
     """
@@ -75,27 +79,26 @@ class PSD:
         tmp = "psd.tmp"
         self.to_ascii(tmp)
 
-        command = [
-            "convert_psd_ascii2xml",
-            "--fname-psd-ascii",
-            f"{tmp}",
-            "--conventional-postfix",
-            "--ifo",
-            f"{self.ifo}",
-        ]
+        executable = "convert_psd_ascii2xml"
+        if shutil.which(executable) is not None:
 
-        pipe = subprocess.Popen(
-            command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
-        )
-        out, err = pipe.communicate()
+            command = [
+                executable,
+                "--fname-psd-ascii",
+                f"{tmp}",
+                "--conventional-postfix",
+                "--ifo",
+                f"{self.ifo}",
+            ]
 
-        if err:
-            if hasattr(self.production.event, "issue_object"):
-                raise Exception(
-                    f"An XML format PSD could not be created.\n{command}\n{out}\n\n{err}",
-                )
-            else:
-                raise Exception(
-                    f"An XML format PSD could not be created.\n{command}\n{out}\n\n{err} ",
-                )
-        os.remove(tmp)
+            pipe = subprocess.Popen(
+                command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
+            )
+            out, err = pipe.communicate()
+
+            if err:
+                logger.warning(f"An XML format PSD could not be created. {err}")
+            os.remove(tmp)
+
+        else:
+            logger.warning("An XML format PSD could not be created.")
