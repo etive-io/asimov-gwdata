@@ -171,16 +171,17 @@ class Pipeline(asimov.pipeline.Pipeline):
             psds = {}
 
             for psd in results_dir:
-                ifo = os.path.splitext(psd)[0]
+                ifo = os.path.splitext(os.path.basename(psd))[0]
                 psds[ifo] = psd
 
             outputs["psds"] = psds
+            self.production.event.meta["psds"] = psds
 
             results_dir = glob.glob(os.path.join(self.production.rundir, "psds", "*.xml.gz"))
             xml_psds = {}
 
             for psd in results_dir:
-                ifo = os.path.splitext(psds)[0]
+                ifo = os.path.splitext(os.path.basename(psd))[0]
                 xml_psds[ifo] = psd
 
             outputs["xml psds"] = xml_psds
