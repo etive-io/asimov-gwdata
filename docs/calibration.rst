@@ -30,13 +30,12 @@ Additionally you can set the following variables:
 		  calibration directory: /home/cal/archive/
 		calibration version: v1
 
-		
+
 Calibration Uncertainty Envelopes in Frame files
 ------------------------------------------------
 
 Starting in O4 the Virgo interferometer's calibration uncertainty envelopes are distributed in frame files alongside the strain.
-
-In order to access these you need to request both the frame to be found and downloaded, and that the envelope be extracted.
+Asimov will automatically determine the correct frame file to extract these from, download it, and extract the calibration data.
 
 .. code-block:: yaml
 
@@ -44,7 +43,6 @@ In order to access these you need to request both the frame to be found and down
 		name: get-data
 		pipeline: gwdata
 		download:
-		  - frames
 		  - calibration
 
 `asimov-gwdata` will then read the frame file and extract the calibration envelope from it saving it in a format compatible with pipelines such as `bilby`.

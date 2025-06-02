@@ -150,13 +150,6 @@ def get_pesummary(components, settings):
 
     for component in components:
 
-        if component == "calibration":
-            calibration_data = data.priors["calibration"][analysis]
-            os.makedirs("calibration", exist_ok=True)
-            for ifo, calibration in calibration_data.items():
-                with set_directory("calibration"):
-                    calibration.save_to_file(f"{ifo}.dat", delimiter="\t")
-
         if component == "posterior":
             os.makedirs("posterior", exist_ok=True)
             shutil.copy(location, os.path.join("posterior", "metafile.h5"))
