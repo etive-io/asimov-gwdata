@@ -3,13 +3,14 @@ Code to work with calibration files.
 """
 import logging
 import os
+import glob
+import re
 
-from gwpy.frequencyseries import FrequencySeries
-from gwpy.timeseries import TimeSeries
+from gwpy.timeseries import TimeSeriesDict
 import numpy as np
 import matplotlib.pyplot as plt
 
-# from .frames import get_data_frames_private
+from .frames import get_data_frames_private
 
 logger = logging.getLogger("gwdata")
 
@@ -47,9 +48,63 @@ class CalibrationUncertaintyEnvelope:
         Create an envelope by extracting it from a frame file.
         """
         instance = cls(*args, **kwargs)
-        instance.data = self.frequency_domain_envelope(frame)
+        instance.data = instance.frequency_domain_envelope(frame=frame)
 
         return instance
+
+    @classmethod
+    def from_time(cls, time, *args, **kwargs):
+        """
+        Create an envelope by extracting it from a data server.
+        """
+        instance = cls(*args, **kwargs)
+        instance.data = instance.frequency_domain_envelope(time=time)
+
+        return instance
+
+    def _nds_to_envelopes(self, time, ifo="V1"):
+        """
+        Looks up the correct data for a given time and turns it into an envelope.
+
+        Parameters
+        ----------
+        time : int
+           The GPS Time at which the calibration envelope should be retrieved.
+        ifo : str
+           The name of the interferometer to find the calibration for.
+
+        Note
+        ----
+        This is currently untested as I've been unable to find a suitable NDS2 server
+        which can provide Virgo data.
+        """
+        channel_map = {
+            "amplitude": f"{ifo}:Hrec_hoftRepro1AR_U01_mag_bias",
+            "amplitude-1s": f"{ifo}:Hrec_hoftRepro1AR_U01_mag_minus1sigma",
+            "amplitude+1s": f"{ifo}:Hrec_hoftRepro1AR_U01_mag_plus1sigma",
+            "phase": f"{ifo}:Hrec_hoftRepro1AR_U01_phase_bias",
+            "phase+1s": f"{ifo}:Hrec_hoftRepro1AR_U01_phase_plus1sigma",
+            "phase-1s": f"{ifo}:Hrec_hoftRepro1AR_U01_phase_minus1sigma",
+        }
+
+        start = time - 60
+        end = time + 60
+
+        data = TimeSeriesDict.get(list(channel_map.values()), start, end, host="nds")
+
+        envelope = np.vstack(
+            [
+                data[channel_map["amplitude"]].times.value,
+                data[channel_map["amplitude"]].data,
+                data[channel_map["phase"]].data,
+                data[channel_map["amplitude-1s"]].data,
+                data[channel_map["phase-1s"]].data,
+                data[channel_map["amplitude+1s"]].data,
+                data[channel_map["phase+1s"]].data,
+            ]
+        )
+
+        return envelope
 
     def _frame_to_envelopes(self, frame):
         """
@@ -67,24 +122,25 @@ class CalibrationUncertaintyEnvelope:
 
         data = {}
 
-        for quantity, channel in channel_map.items():
-            data[quantity] = TimeSeries.read(frame, channel)
+
+        # Curiously gwpy requires us to read this as if it's timeseries data.
+        data = TimeSeriesDict.read(frame, list(channel_map.values()))
 
         envelope = np.vstack(
             [
-                data["amplitude"].times.value,
-                data["amplitude"].data,
-                data["phase"].data,
-                data["amplitude-1s"].data,
-                data["phase-1s"].data,
-                data["amplitude+1s"].data,
-                data["phase+1s"].data,
+                data[channel_map["amplitude"]].times.value,
+                data[channel_map["amplitude"]].data,
+                data[channel_map["phase"]].data,
+                data[channel_map["amplitude-1s"]].data,
+                data[channel_map["phase-1s"]].data,
+                data[channel_map["amplitude+1s"]].data,
+                data[channel_map["phase+1s"]].data,
             ]
         )
 
         return envelope
 
-    def frequency_domain_envelope(self, frame, window=np.hamming, srate=16000):
+    def frequency_domain_envelope(self, frame=None, time=None, srate=16000):
         """
         Compute the frequency-domain representation of the envelope.
 
@@ -98,7 +154,12 @@ class CalibrationUncertaintyEnvelope:
           The sampling rate of the data, defaults to 16000kHz, which is the Virgo default.
 
         """
-        td_data = self._frame_to_envelopes(frame)
+        if frame:
+            td_data = self._frame_to_envelopes(frame)
+        elif time:
+            td_data = self._nds_to_envelopes(time)
+        else:
+            logger.error("No source specified for the calibration data.")
         td_data[0, :] = np.linspace(0, srate, td_data.shape[1])
         return td_data
 
@@ -171,7 +232,7 @@ def get_calibration_from_frame(
     """
     start = time - 60
     end = time + 60
-    frame = get_data_frames_private(type, start, end, download=True, host=host)[1][0]
+    frame = get_data_frames_private(["V1:HoftAR1"], start, end, download=True, host=host)[1][0]
     envelope = CalibrationUncertaintyEnvelope.from_frame(frame=frame)
     envelope.to_file(os.path.join("calibration", f"{ifo}.dat"))
 

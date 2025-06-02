@@ -37,7 +37,6 @@ def get_data_frames_private(types,
 
     urls = {}
     files = {}
-
     detectors = [type.split(":")[0] for type in types]
     with Session() as sess:
         for ifo, type in zip(detectors, types):
