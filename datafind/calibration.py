@@ -125,7 +125,6 @@ class CalibrationUncertaintyEnvelope:
 
         # Curiously gwpy requires us to read this as if it's timeseries data.
         data = TimeSeriesDict.read(frame, list(channel_map.values()))
-
         envelope = np.vstack(
             [
                 data[channel_map["amplitude"]].times.value,

@@ -71,7 +71,7 @@ class TestVirgoCalibration(unittest.TestCase):
 
     def setUp(self):
         """Create a calibration envelope object"""
-        self.test_frame = "tests/test_data/V-HoftAR1-1397154000-2000.gwf"
+        self.test_frame = "tests/test_data/V1.gwf"
         self.envelope = CalibrationUncertaintyEnvelope.from_frame(frame=self.test_frame)
 
     def test_plot(self):
