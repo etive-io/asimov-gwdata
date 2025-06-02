@@ -8,6 +8,8 @@ import subprocess
 import os
 import numpy as np
 
+from .calibration import CalibrationUncertaintyEnvelope
+
 class Metafile(contextlib.AbstractContextManager):
     """
     This class handles PESummary metafiles in an efficient manner.
@@ -25,9 +27,9 @@ class Metafile(contextlib.AbstractContextManager):
         """
         self.filename = filename
 
-    
+
     def __enter__(self):
-        
+
         self.metafile = h5py.File(self.filename)
 
         return self
@@ -46,6 +48,18 @@ class Metafile(contextlib.AbstractContextManager):
         for ifo, psd in self.metafile[analysis]['psds'].items():
             psds[ifo] = PSD(psd, ifo=ifo)
         return psds
+
+    def calibration(self, analysis=None):
+        if not analysis:
+            # If no analysis is specified use the first one
+            analyses = list(self.metafile.keys())
+            analyses.remove("history")
+            analyses.remove("version")
+            analysis = sorted(analyses)[0]
+        cals = {}
+        for ifo, cal in self.metafile[analysis]['calibration_envelope'].items():
+            cals[ifo] = CalibrationUncertaintyEnvelope.from_array(cal)
+        return cals
 
 
 class PSD:
