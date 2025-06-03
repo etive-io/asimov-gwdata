@@ -5,7 +5,10 @@ Data find logic for locating frame files.
 from gwosc.locate import get_urls
 from gwdatafind import find_urls, Session
 from .utils import download_file
+import os
+import logging
 
+logger = logging.getLogger("gwdata")
 
 def get_data_frames_private(types,
                             start, end,
@@ -87,9 +90,7 @@ def get_data_frames_gwosc(detectors, start, end, duration):
         with open(os.path.join("cache", f"{detector}.cache"), "w") as cache_file:
             cache_file.write(cache_string)
 
-    click.echo("Frames found")
-    click.echo("------------")
+    logger.info("Frames found")
     for det, url in files.items():
-        click.echo(click.style(f"{det}: ", bold=True), nl=False)
-        click.echo(url[0])
+        logger.info((f"{det}: {url[0]}"))
     return urls
