@@ -52,60 +52,6 @@ class CalibrationUncertaintyEnvelope:
 
         return instance
 
-    @classmethod
-    def from_time(cls, time, *args, **kwargs):
-        """
-        Create an envelope by extracting it from a data server.
-        """
-        instance = cls(*args, **kwargs)
-        instance.data = instance.frequency_domain_envelope(time=time)
-
-        return instance
-
-    def _nds_to_envelopes(self, time, ifo="V1"):
-        """
-        Looks up the correct data for a given time and turns it into an envelope.
-
-        Parameters
-        ----------
-        time : int
-           The GPS Time at which the calibration envelope should be retrieved.
-        ifo : str
-           The name of the interferometer to find the calibration for.
-
-        Note
-        ----
-        This is currently untested as I've been unable to find a suitable NDS2 server
-        which can provide Virgo data.
-        """
-        channel_map = {
-            "amplitude": f"{ifo}:Hrec_hoftRepro1AR_U01_mag_bias",
-            "amplitude-1s": f"{ifo}:Hrec_hoftRepro1AR_U01_mag_minus1sigma",
-            "amplitude+1s": f"{ifo}:Hrec_hoftRepro1AR_U01_mag_plus1sigma",
-            "phase": f"{ifo}:Hrec_hoftRepro1AR_U01_phase_bias",
-            "phase+1s": f"{ifo}:Hrec_hoftRepro1AR_U01_phase_plus1sigma",
-            "phase-1s": f"{ifo}:Hrec_hoftRepro1AR_U01_phase_minus1sigma",
-        }
-
-        start = time - 60
-        end = time + 60
-
-        data = TimeSeriesDict.get(list(channel_map.values()), start, end, host="nds")
-
-        envelope = np.vstack(
-            [
-                data[channel_map["amplitude"]].times.value,
-                data[channel_map["amplitude"]].data,
-                data[channel_map["phase"]].data,
-                data[channel_map["amplitude-1s"]].data,
-                data[channel_map["phase-1s"]].data,
-                data[channel_map["amplitude+1s"]].data,
-                data[channel_map["phase+1s"]].data,
-            ]
-        )
-
-        return envelope
-
     def _frame_to_envelopes(self, frame):
         """
         Read the representation of the calibration uncertainty envelope.
@@ -215,7 +161,8 @@ class CalibrationUncertaintyEnvelope:
 def get_calibration_from_frame(
     ifo,
     time,
-    host="datafind.igwn.org"):
+    host="datafind.igwn.org",
+    frametype="V1:HoftAR1"):
     """
     Retrieve a calibration file from a frame file.
 
@@ -228,10 +175,12 @@ def get_calibration_from_frame(
     host : str, optional
       The URL of the datafind server which should be queried to retrieve frame file information.
       Defaults to datafind.igwn.org
+    frametype : str, optional
+      The frametype to be used to retrieve calibration uncertainty data from.
     """
     start = time - 60
     end = time + 60
-    frame = get_data_frames_private(["V1:HoftAR1"], start, end, download=True, host=host)[1][0]
+    frame = get_data_frames_private([frametype], start, end, download=True, host=host)[1][0]
     envelope = CalibrationUncertaintyEnvelope.from_frame(frame=frame)
     envelope.to_file(os.path.join("calibration", f"{ifo}.dat"))
 
