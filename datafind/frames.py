@@ -93,4 +93,4 @@ def get_data_frames_gwosc(detectors, start, end, duration):
     for det, url in files.items():
         click.echo(click.style(f"{det}: ", bold=True), nl=False)
         click.echo(url[0])
-    return urls
+    return urls, files
