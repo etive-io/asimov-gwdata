@@ -16,14 +16,14 @@ class TestFrameClass(unittest.TestCase):
         try:
             frame = datafind.frames.Frame("tests/test_data/V-HoftAR1-1423946000-2000.gwf")
             self.assertEqual(frame.nearest_calibration(1423946000.5), 1423946000)
-        except FileNotFoundError:
+        except (FileNotFoundError, ImportError):
             self.skipTest("Cannot access frame file.")
 
     def test_time_in_frame(self):
         try:
             frame = datafind.frames.Frame("tests/test_data/V-HoftAR1-1423946000-2000.gwf")
             self.assertTrue(1423946000.0 in frame)
-        except FileNotFoundError:
+        except (FileNotFoundError, ImportError):
             self.skipTest("Cannot access frame file.")
 
 class TestLIGOFrames(unittest.TestCase):
