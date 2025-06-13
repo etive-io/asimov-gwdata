@@ -7,8 +7,33 @@ from gwdatafind import find_urls, Session
 from .utils import download_file
 import os
 import logging
+import numpy as np
+from gwpy.timeseries import TimeSeries
+from gwpy.io.gwf import get_channel_names
 
 logger = logging.getLogger("gwdata")
+
+class Frame:
+    """
+    A lightweight class to represent a data Frame.
+    """
+    def __init__(self, framefile):
+        self.framefile = framefile
+
+    def __contains__(self, time):
+        #frame = GWFFile.open(self.framefile)
+        channel = get_channel_names(self.framefile)[0]
+        times = TimeSeries.read(self.framefile, channel=channel).times.value
+        if times[0] <= time <= times[-1]:
+            return True
+        else:
+            return False
+
+    def nearest_calibration(self, time, channel="V1:Hrec_hoftRepro1AR_U01_lastWriteGPS"):
+        data = TimeSeries.read(self.framefile, channel=channel)
+        times = data.times
+        nearest = np.argmin(np.abs(times.value - time))
+        return data[nearest].value
 
 def get_data_frames_private(types,
                             start, end,

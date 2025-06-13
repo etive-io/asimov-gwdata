@@ -10,7 +10,7 @@ from gwpy.timeseries import TimeSeriesDict
 import numpy as np
 import matplotlib.pyplot as plt
 
-from .frames import get_data_frames_private
+from .frames import Frame, get_data_frames_private
 
 logger = logging.getLogger("gwdata")
 
@@ -162,6 +162,7 @@ def get_calibration_from_frame(
     ifo,
     time,
     host="datafind.igwn.org",
+    calibration="U00",
     frametype="V1:HoftAR1"):
     """
     Retrieve a calibration file from a frame file.
@@ -181,6 +182,10 @@ def get_calibration_from_frame(
     start = time - 60
     end = time + 60
     frame = get_data_frames_private([frametype], start, end, download=True, host=host)[1][0]
+    channel = f"V1:Hrec_hoft_{calibration}_lastWriteGPS"
+    if not (nearest := Frame(frame).nearest_calibration(channel)) in frame:
+        frame = get_data_frames_private([frametype], nearest-1, nearest+1, download=True, host=host)[1][0]
+
     envelope = CalibrationUncertaintyEnvelope.from_frame(frame=frame)
     envelope.to_file(os.path.join("calibration", f"{ifo}.dat"))
 
