@@ -7,6 +7,9 @@ import glob
 import re
 
 from gwpy.timeseries import TimeSeriesDict
+
+import lal, lalframe
+
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -52,7 +55,7 @@ class CalibrationUncertaintyEnvelope:
 
         return instance
 
-    def _frame_to_envelopes(self, frame):
+    def _frame_to_envelopes(self, frame, calibration="U00"):
         """
         Read the representation of the calibration uncertainty envelope.
         """
@@ -67,19 +70,32 @@ class CalibrationUncertaintyEnvelope:
         }
 
         data = {}
+        channel = f"V1:Hrec_hoft_{calibration}_lastWriteGPS"
+        frfile = lalframe.FrOpen(os.path.dirname(frame), os.path.basename(frame))
+        epoch = frfile.epoch
+        #lalframe.FrClose(frfile)
+        time = Frame(frame).nearest_calibration(time=epoch, channel=channel)
+        time=epoch
+        stream = lalframe.FrStreamOpen(os.path.dirname(frame), os.path.basename(frame))
+        print(dir(stream))
+        for name, channel in channel_map.items():
 
-
-        # Curiously gwpy requires us to read this as if it's timeseries data.
-        data = TimeSeriesDict.read(frame, list(channel_map.values()))
+            #frdatatype = lalframe.FrStreamGetFrequencySeriesType(channel, stream)
+            data[channel] = lalframe.FrStreamReadREAL8FrequencySeries(stream, channel, time)
+            f0 = data[channel].f0
+            delta_f = data[channel].deltaF
+            n_bins = data[channel].data.length
+            frequencies = np.linspace(f0, f0 + delta_f * (n_bins - 1), n_bins)
+        #lalframe.FrClose(stream)
         envelope = np.vstack(
             [
-                data[channel_map["amplitude"]].times.value,
-                data[channel_map["amplitude"]].data,
-                data[channel_map["phase"]].data,
-                data[channel_map["amplitude-1s"]].data,
-                data[channel_map["phase-1s"]].data,
-                data[channel_map["amplitude+1s"]].data,
-                data[channel_map["phase+1s"]].data,
+                frequencies,
+                data[channel_map["amplitude"]].data.data,
+                data[channel_map["phase"]].data.data,
+                data[channel_map["amplitude-1s"]].data.data,
+                data[channel_map["phase-1s"]].data.data,
+                data[channel_map["amplitude+1s"]].data.data,
+                data[channel_map["phase+1s"]].data.data,
             ]
         )
 

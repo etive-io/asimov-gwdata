@@ -29,7 +29,7 @@ class Frame:
         else:
             return False
 
-    def nearest_calibration(self, time, channel="V1:Hrec_hoftRepro1AR_U01_lastWriteGPS"):
+    def nearest_calibration(self, time, channel="V1:Hrec_hoftRepro1AR_U00_lastWriteGPS"):
         data = TimeSeries.read(self.framefile, channel=channel)
         times = data.times
         nearest = np.argmin(np.abs(times.value - time))
