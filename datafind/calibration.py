@@ -86,16 +86,18 @@ class CalibrationUncertaintyEnvelope:
             delta_f = data[channel].deltaF
             n_bins = data[channel].data.length
             frequencies = np.linspace(f0, f0 + delta_f * (n_bins - 1), n_bins)
+            # Only include frequencies greater than 10Hz
+            mask = frequencies >= 10.0
         #lalframe.FrClose(stream)
         envelope = np.vstack(
             [
-                frequencies,
-                data[channel_map["amplitude"]].data.data,
-                data[channel_map["phase"]].data.data,
-                data[channel_map["amplitude-1s"]].data.data,
-                data[channel_map["phase-1s"]].data.data,
-                data[channel_map["amplitude+1s"]].data.data,
-                data[channel_map["phase+1s"]].data.data,
+                frequencies[mask],
+                data[channel_map["amplitude"]].data.data[mask],
+                data[channel_map["phase"]].data.data[mask],
+                data[channel_map["amplitude-1s"]].data.data[mask],
+                data[channel_map["phase-1s"]].data.data[mask],
+                data[channel_map["amplitude+1s"]].data.data[mask],
+                data[channel_map["phase+1s"]].data.data[mask],
             ]
         )
 
