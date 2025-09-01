@@ -13,15 +13,17 @@ from gwpy.io.gwf import get_channel_names
 
 logger = logging.getLogger("gwdata")
 
+
 class Frame:
     """
     A lightweight class to represent a data Frame.
     """
+
     def __init__(self, framefile):
         self.framefile = framefile
 
     def __contains__(self, time):
-        #frame = GWFFile.open(self.framefile)
+        # frame = GWFFile.open(self.framefile)
         channel = get_channel_names(self.framefile)[0]
         times = TimeSeries.read(self.framefile, channel=channel).times.value
         if times[0] <= time <= times[-1]:
@@ -29,16 +31,41 @@ class Frame:
         else:
             return False
 
-    def nearest_calibration(self, time, channel="V1:Hrec_hoftRepro1AR_U00_lastWriteGPS"):
+    def nearest_calibration(
+        self, time, channel="V1:Hrec_hoftRepro1AR_U00_lastWriteGPS"
+    ):
+        """
+        Find the nearest calibration data in the file to a given time, and return in.
+
+        Parameters
+        ----------
+        time : float
+           A GPS time for which the calibration should be returned.
+        channel: str
+           The channel which should be checked to find the nearest calibration envelope.
+
+        Returns
+        -------
+        array-like: If the calibration is in this file it is returned as an array.
+        None: If the calibration is not present in this file None is returned.
+        """
         data = TimeSeries.read(self.framefile, channel=channel)
         times = data.times
         nearest = np.argmin(np.abs(times.value - time))
-        return data[nearest].value
+        # Check if the nearest value is actually one end of the timeseries
+        # and then check that it definitely isn't that time
+        # before returning None
+        if ((nearest == 0) or (nearest == len(times))) and (
+            (times.value - time) > (times[1] - times[0])
+        ):
+            return None
+        else:
+            return data[nearest].value
 
-def get_data_frames_private(types,
-                            start, end,
-                            download=False,
-                            host="datafind.igwn.org"):
+
+def get_data_frames_private(
+    types, start, end, download=False, host="datafind.igwn.org"
+):
     """
     Gather data frames which are not available via GWOSC.
 
