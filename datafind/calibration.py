@@ -89,15 +89,17 @@ class CalibrationUncertaintyEnvelope:
             # Only include frequencies greater than 10Hz
             mask = frequencies >= 10.0
         #lalframe.FrClose(stream)
+        amp = data[channel_map["amplitude"]].data.data[mask]
+        phase = data[channel_map["phase"]].data.data[mask]
         envelope = np.vstack(
             [
                 frequencies[mask],
-                data[channel_map["amplitude"]].data.data[mask],
-                data[channel_map["phase"]].data.data[mask],
-                data[channel_map["amplitude-1s"]].data.data[mask],
-                data[channel_map["phase-1s"]].data.data[mask],
-                data[channel_map["amplitude+1s"]].data.data[mask],
-                data[channel_map["phase+1s"]].data.data[mask],
+                amp
+                phase,
+                amp + data[channel_map["amplitude-1s"]].data.data[mask],
+                phase + data[channel_map["phase-1s"]].data.data[mask],
+                amp + data[channel_map["amplitude+1s"]].data.data[mask],
+                phase + data[channel_map["phase+1s"]].data.data[mask],
             ]
         )
 
