@@ -102,7 +102,9 @@ def get_data_frames_private(
                 end,
                 host=host,
                 session=sess,
+                urltype="osdf",
             )
+    print(urls)
     if download:
         for ifo, det_urls in urls.items():
             for url in det_urls:
