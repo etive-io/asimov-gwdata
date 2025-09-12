@@ -1,5 +1,7 @@
 import os
 from urllib.parse import urlparse, unquote
+from requests_pelican import PelicanAdapter
+from igwn_auth_utils import Session
 import shutil
 
 import requests
@@ -28,6 +30,13 @@ def download_file(url, directory="frames", name=None):
         local_filename = name
     if parsed_url.scheme == "file":
         shutil.copyfile(url[16:], os.path.join(directory, local_filename))
+    elif parsed_url.scheme == "osdf":
+        with Session() as sess:
+            sess.mount("osdf://", PelicanAdapter("osdf"))
+            with sess.get(url, stream=True,  token_scope="read:/ligo") as r:
+                with open(os.path.join(directory, local_filename), "wb") as f:
+                    shutil.copyfileobj(r.raw, f)
+                
     else:
         with requests.get(url, stream=True) as r:
             with open(os.path.join(directory, local_filename), "wb") as f:

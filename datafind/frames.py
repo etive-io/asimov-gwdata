@@ -3,7 +3,9 @@ Data find logic for locating frame files.
 """
 
 from gwosc.locate import get_urls
-from gwdatafind import find_urls, Session
+from gwdatafind import find_urls
+from igwn_auth_utils import Session
+from requests_pelican import PelicanAdapter
 from .utils import download_file
 import os
 import logging
@@ -94,6 +96,7 @@ def get_data_frames_private(
     files = {}
     detectors = [type.split(":")[0] for type in types]
     with Session() as sess:
+        sess.mount("osdf://", PelicanAdapter("osdf"))
         for ifo, type in zip(detectors, types):
             urls[ifo] = find_urls(
                 ifo[0],
