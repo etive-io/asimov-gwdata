@@ -54,48 +54,25 @@ class CalibrationDataTests(unittest.TestCase):
 class TestFrameCalibration(unittest.TestCase):
     """Test the workflow for finding a frame and extracting a calibration envelope."""
     def setUp(self):
-        self.time = 1397154010
+        self.time = 1415277701 #1412725132
 
-    @patch('gwdatafind.find_urls')
-    @patch('datafind.utils.download_file')
-    def test_lookup(self, mocklookup, mockdownload):
-        mocklookup.return_value = ["file:///tests/test_data/V1-test-data.gwf"]
-        mockdownload.return_value = ["tests/test_data/V1-test-data.gwf"]
+    def test_lookup(self):
         
         get_calibration_from_frame(
             ifo='V1',
-            time=self.time)
+            time=self.time,
 
-# class TestVirgoCalibration(unittest.TestCase):
-#     """Test Virgo-style calibration uncertainty, distributed in frames."""
+        )
 
 
-#     def setUp(self):
-#         """Create a calibration envelope object"""
-#         self.test_frame = "tests/test_data/V1.gwf"
-#         self.envelope = CalibrationUncertaintyEnvelope.from_frame(frame=self.test_frame)
-
-#     def test_plot(self):
-#         """Create a plot of the envelope"""
-#         self.envelope.plot("test_envelope.png")
-
-#     def test_save_file(self):
-#         """Create a text file of the envelope."""
-#         self.envelope.to_file("test_envelope.txt")
-
-# I can't get NDS2 to find the virgo data yet.
-
-# class VirgoCalibrationNDS(unittest.TestCase):
-#     """Test Virgo-style calibration uncertainty, distributed in frames."""
-
-#     def setUp(self):
-#         """Create a calibration envelope object"""
-#         self.envelope = CalibrationUncertaintyEnvelope.from_time(time=1397154000)
-
-#     def test_plot(self):
-#         """Create a plot of the envelope"""
-#         self.envelope.plot("test_envelope.png")
-
-#     def test_save_file(self):
-#         """Create a text file of the envelope."""
-#         self.envelope.to_file("test_envelope.txt")
+class TestVirgoCalibration(unittest.TestCase):
+    def setUp(self):
+        """Create a calibration envelope object"""
+        self.test_frame = "V1.gwf"
+        self.envelope = CalibrationUncertaintyEnvelope.from_frame(frame=self.test_frame)
+    def test_plot(self):
+        """Create a plot of the envelope"""
+        self.envelope.plot("test_envelope.png")
+    def test_save_file(self):
+        """Create a text file of the envelope."""
+        self.envelope.to_file("test_envelope.txt")

@@ -15,7 +15,9 @@ import matplotlib.pyplot as plt
 
 from .frames import Frame, get_data_frames_private
 
+
 logger = logging.getLogger("gwdata")
+logger.setLevel(logging.DEBUG)
 
 class CalibrationUncertaintyEnvelope:
     """
@@ -50,12 +52,12 @@ class CalibrationUncertaintyEnvelope:
         """
         Create an envelope by extracting it from a frame file.
         """
-        instance = cls(*args, **kwargs)
-        instance.data = instance.frequency_domain_envelope(frame=frame)
+        instance = cls()
+        instance.data = instance.frequency_domain_envelope(frame=frame, *args, **kwargs)
 
         return instance
 
-    def _frame_to_envelopes(self, frame, calibration="U00"):
+    def _frame_to_envelopes(self, frame, calibration="U00", channel="V1:Hrec_hoftRepro1AR_U00_lastWriteGPS"):
         """
         Read the representation of the calibration uncertainty envelope.
         """
@@ -70,11 +72,12 @@ class CalibrationUncertaintyEnvelope:
         }
 
         data = {}
-        channel = f"V1:Hrec_hoft_{calibration}_lastWriteGPS"
         frfile = lalframe.FrOpen(os.path.dirname(frame), os.path.basename(frame))
         epoch = frfile.epoch
         #lalframe.FrClose(frfile)
         time = Frame(frame).nearest_calibration(time=epoch, channel=channel)
+        logger.info(f"Using the calibration data at {time}")
+        print(f"Using the calibration data at {time}")
         stream = lalframe.FrStreamOpen(os.path.dirname(frame), os.path.basename(frame))
         for name, channel in channel_map.items():
             data[channel] = lalframe.FrStreamReadREAL8FrequencySeries(stream, channel, time)
@@ -83,25 +86,24 @@ class CalibrationUncertaintyEnvelope:
             n_bins = data[channel].data.length
             frequencies = np.linspace(f0, f0 + delta_f * (n_bins - 1), n_bins)
             # Only include frequencies greater than 10Hz
-            mask = frequencies >= 10.0
+            mask = (frequencies >= 10.0)
         #lalframe.FrClose(stream)
-        amp = data[channel_map["amplitude"]].data.data[mask]
-        phase = data[channel_map["phase"]].data.data[mask]
+        amp = data[channel_map["amplitude"]].data.data
+        phase = data[channel_map["phase"]].data.data
         envelope = np.vstack(
             [
-                frequencies[mask],
+                frequencies,
                 amp,
                 phase,
-                amp + data[channel_map["amplitude-1s"]].data.data[mask],
-                phase + data[channel_map["phase-1s"]].data.data[mask],
-                amp + data[channel_map["amplitude+1s"]].data.data[mask],
-                phase + data[channel_map["phase+1s"]].data.data[mask],
+                amp + data[channel_map["amplitude-1s"]].data.data,
+                phase + data[channel_map["phase-1s"]].data.data,
+                amp + data[channel_map["amplitude+1s"]].data.data,
+                phase + data[channel_map["phase+1s"]].data.data,
             ]
         )
+        return envelope.T[mask].T
 
-        return envelope
-
-    def frequency_domain_envelope(self, frame=None, time=None, srate=16000):
+    def frequency_domain_envelope(self, channel=None, frame=None, time=None, srate=16000):
         """
         Compute the frequency-domain representation of the envelope.
 
@@ -116,12 +118,11 @@ class CalibrationUncertaintyEnvelope:
 
         """
         if frame:
-            td_data = self._frame_to_envelopes(frame)
+            td_data = self._frame_to_envelopes(frame, channel=channel)
         elif time:
             td_data = self._nds_to_envelopes(time)
         else:
             logger.error("No source specified for the calibration data.")
-        td_data[0, :] = np.linspace(0, srate, td_data.shape[1])
         return td_data
 
     def to_file(self, filename):
@@ -134,20 +135,21 @@ class CalibrationUncertaintyEnvelope:
           The location the file should be written to.
         """
         envelope = self.data
+        os.makedirs("calibration", exist_ok = True)
         np.savetxt(
             filename,
             envelope.T,
-            comments="\t".join(
-                [
-                    "Frequency",
-                    "Median mag",
-                    "Median phase (Rad)",
-                    "16th percentile mag",
-                    "16th percentile phase",
-                    "84th percentile mag",
-                    "84th percentile phase",
-                ]
-            ),
+            header="\t".join([
+                "Frequency",
+                "Median mag",
+                "Median phase (Rad)",
+                "16th percentile mag",
+                "16th percentile phase",
+                "84th percentile mag",
+                "84th percentile phase",
+            ]),
+            comments="# "  # or "" if you want no prefix at all
+
         )
 
     def plot(self, filename, save=True):
@@ -175,11 +177,12 @@ class CalibrationUncertaintyEnvelope:
         return f
 
 def get_calibration_from_frame(
-    ifo,
-    time,
-    host="datafind.igwn.org",
-    calibration="U00",
-    frametype="V1:HoftAR1"):
+        ifo,
+        time,
+        host="datafind.igwn.org",
+        calibration="U00",
+        lookup_channel="V1:Hrec_hoftRepro1AR_U01_lastWriteGPS",
+        frametype="V1:HoftAR1"):
     """
     Retrieve a calibration file from a frame file.
 
@@ -192,18 +195,21 @@ def get_calibration_from_frame(
     host : str, optional
       The URL of the datafind server which should be queried to retrieve frame file information.
       Defaults to datafind.igwn.org
+    lookup_channel: str
+      The channel to check the location of the nearest calibration uncertainty envelope from.
     frametype : str, optional
       The frametype to be used to retrieve calibration uncertainty data from.
     """
     start = time - 60
     end = time + 60
-    frame = get_data_frames_private([frametype], start, end, download=True, host=host)[1][0]
-    print("FRAME", frame)
-    channel = f"V1:Hrec_hoft_{calibration}_lastWriteGPS"
-    if not (nearest := Frame(frame).nearest_calibration(channel)) in frame:
+    frame = get_data_frames_private([frametype], start, end, download=True, host=host)[1][ifo]
+    frame_o = Frame(os.path.join("frames", frame))
+    nearest = frame_o.nearest_calibration(time=start, channel=lookup_channel)
+    logger.info(f"The nearest calibration is at {nearest}")
+    if not nearest in frame_o:
         frame = get_data_frames_private([frametype], nearest-1, nearest+1, download=True, host=host)[1][0]
 
-    envelope = CalibrationUncertaintyEnvelope.from_frame(frame=frame)
+    envelope = CalibrationUncertaintyEnvelope.from_frame(frame=os.path.join("frames", frame), channel=lookup_channel)
     envelope.to_file(os.path.join("calibration", f"{ifo}.dat"))
 
 

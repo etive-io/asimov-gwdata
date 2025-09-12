@@ -10,7 +10,7 @@ from .utils import download_file
 import os
 import logging
 import numpy as np
-from gwpy.timeseries import TimeSeries
+from gwpy.timeseries import TimeSeries, TimeSeriesDict
 from gwpy.io.gwf import get_channel_names
 
 logger = logging.getLogger("gwdata")
@@ -24,8 +24,11 @@ class Frame:
     def __init__(self, framefile):
         self.framefile = framefile
 
+    @property
+    def channels(self):
+        return get_channel_names(self.framefile)
+        
     def __contains__(self, time):
-        # frame = GWFFile.open(self.framefile)
         channel = get_channel_names(self.framefile)[0]
         times = TimeSeries.read(self.framefile, channel=channel).times.value
         if times[0] <= time <= times[-1]:
@@ -34,7 +37,7 @@ class Frame:
             return False
 
     def nearest_calibration(
-        self, time, channel="V1:Hrec_hoftRepro1AR_U00_lastWriteGPS"
+        self, time, channel="V1:Hrec_hoft_U00_lastWriteGPS"
     ):
         """
         Find the nearest calibration data in the file to a given time, and return in.
@@ -50,19 +53,19 @@ class Frame:
         -------
         array-like: If the calibration is in this file it is returned as an array.
         None: If the calibration is not present in this file None is returned.
-        """
+        """        
         data = TimeSeries.read(self.framefile, channel=channel)
         times = data.times
         nearest = np.argmin(np.abs(times.value - time))
-        # Check if the nearest value is actually one end of the timeseries
-        # and then check that it definitely isn't that time
-        # before returning None
-        if ((nearest == 0) or (nearest == len(times))) and (
-            (times.value - time) > (times[1] - times[0])
-        ):
-            return None
-        else:
-            return data[nearest].value
+        # # Check if the nearest value is actually one end of the timeseries
+        # # and then check that it definitely isn't that time
+        # # before returning None
+        # if ((nearest == 0) or (nearest == len(times))) and (
+        #     (times.value - time) > (times[1] - times[0]).value
+        # ):
+        #     return None
+        # else:
+        return data[nearest].value
 
 
 def get_data_frames_private(
@@ -107,7 +110,7 @@ def get_data_frames_private(
                 session=sess,
                 urltype="osdf",
             )
-    print(urls)
+    logger.info(urls)
     if download:
         for ifo, det_urls in urls.items():
             for url in det_urls:
