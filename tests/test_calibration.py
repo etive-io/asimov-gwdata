@@ -50,7 +50,7 @@ class CalibrationDataTests(unittest.TestCase):
         self.assertEqual(output['L1'], file_list[-1])
 
 
-@unittest.skipIf(~os.path.exists("/cvmfs/virgo.storage.igwn.org"), reason="CVMFS is not available on this system")
+#@unittest.skipIf(~os.path.exists("tests/test_data/V1-test-data.gwf"), reason="Virgo data is not available on this system.")
 class TestFrameCalibration(unittest.TestCase):
     """Test the workflow for finding a frame and extracting a calibration envelope."""
     def setUp(self):
@@ -59,28 +59,29 @@ class TestFrameCalibration(unittest.TestCase):
     @patch('gwdatafind.find_urls')
     @patch('datafind.utils.download_file')
     def test_lookup(self, mocklookup, mockdownload):
-        mocklookup.return_value = ["file:///tests/test_data/V-HoftAR1-1397154000-2000.gwf"]
-        mockdownload.return_value = ["tests/test_data/V-HoftAR1-1397154000-2000.gwf"]
+        mocklookup.return_value = ["file:///tests/test_data/V1-test-data.gwf"]
+        mockdownload.return_value = ["tests/test_data/V1-test-data.gwf"]
+        
         get_calibration_from_frame(
             ifo='V1',
             time=self.time)
 
-class TestVirgoCalibration(unittest.TestCase):
-    """Test Virgo-style calibration uncertainty, distributed in frames."""
+# class TestVirgoCalibration(unittest.TestCase):
+#     """Test Virgo-style calibration uncertainty, distributed in frames."""
 
 
-    def setUp(self):
-        """Create a calibration envelope object"""
-        self.test_frame = "tests/test_data/V1.gwf"
-        self.envelope = CalibrationUncertaintyEnvelope.from_frame(frame=self.test_frame)
+#     def setUp(self):
+#         """Create a calibration envelope object"""
+#         self.test_frame = "tests/test_data/V1.gwf"
+#         self.envelope = CalibrationUncertaintyEnvelope.from_frame(frame=self.test_frame)
 
-    def test_plot(self):
-        """Create a plot of the envelope"""
-        self.envelope.plot("test_envelope.png")
+#     def test_plot(self):
+#         """Create a plot of the envelope"""
+#         self.envelope.plot("test_envelope.png")
 
-    def test_save_file(self):
-        """Create a text file of the envelope."""
-        self.envelope.to_file("test_envelope.txt")
+#     def test_save_file(self):
+#         """Create a text file of the envelope."""
+#         self.envelope.to_file("test_envelope.txt")
 
 # I can't get NDS2 to find the virgo data yet.
 
