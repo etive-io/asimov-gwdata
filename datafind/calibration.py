@@ -90,7 +90,7 @@ class CalibrationUncertaintyEnvelope:
         envelope = np.vstack(
             [
                 frequencies[mask],
-                amp
+                amp,
                 phase,
                 amp + data[channel_map["amplitude-1s"]].data.data[mask],
                 phase + data[channel_map["phase-1s"]].data.data[mask],
