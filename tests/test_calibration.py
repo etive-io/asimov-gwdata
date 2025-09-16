@@ -1,6 +1,17 @@
 import unittest
 from unittest.mock import patch
 import os
+import numpy as np
+import igwn_auth_utils
+
+try:
+    a = igwn_auth_utils.find_scitoken(audience="https://datafind.igwn.org", scope="gwdatafind.read")
+    logged_in=True
+except igwn_auth_utils.IgwnAuthError as e:
+    print(e)
+    logged_in=False
+
+
 #from datafind.frames import get_data_frames_private
 from datafind.calibration import    (
     CalibrationUncertaintyEnvelope,
@@ -50,7 +61,7 @@ class CalibrationDataTests(unittest.TestCase):
         self.assertEqual(output['L1'], file_list[-1])
 
 
-#@unittest.skipIf(~os.path.exists("tests/test_data/V1-test-data.gwf"), reason="Virgo data is not available on this system.")
+@unittest.skipIf(logged_in==False, "No scitoken was found")
 class TestFrameCalibration(unittest.TestCase):
     """Test the workflow for finding a frame and extracting a calibration envelope."""
     def setUp(self):
@@ -61,18 +72,9 @@ class TestFrameCalibration(unittest.TestCase):
         get_calibration_from_frame(
             ifo='V1',
             time=self.time,
-
         )
 
+        data_1 = np.loadtxt("calibration/V1.dat")
+        data_2 = np.loadtxt("tests/test_data/test_envelope.txt")
 
-class TestVirgoCalibration(unittest.TestCase):
-    def setUp(self):
-        """Create a calibration envelope object"""
-        self.test_frame = "V1.gwf"
-        self.envelope = CalibrationUncertaintyEnvelope.from_frame(frame=self.test_frame)
-    def test_plot(self):
-        """Create a plot of the envelope"""
-        self.envelope.plot("test_envelope.png")
-    def test_save_file(self):
-        """Create a text file of the envelope."""
-        self.envelope.to_file("test_envelope.txt")
+        np.testing.assert_equal(data_1, data_2)

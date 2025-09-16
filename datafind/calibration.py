@@ -77,7 +77,6 @@ class CalibrationUncertaintyEnvelope:
         #lalframe.FrClose(frfile)
         time = Frame(frame).nearest_calibration(time=epoch, channel=channel)
         logger.info(f"Using the calibration data at {time}")
-        print(f"Using the calibration data at {time}")
         stream = lalframe.FrStreamOpen(os.path.dirname(frame), os.path.basename(frame))
         for name, channel in channel_map.items():
             data[channel] = lalframe.FrStreamReadREAL8FrequencySeries(stream, channel, time)
