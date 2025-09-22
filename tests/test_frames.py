@@ -34,6 +34,7 @@ class TestLIGOFrames(unittest.TestCase):
     def setUp(self):
         pass
 
+    @unittest.skip("Skip while ER8 data is missing")
     @unittest.skipIf(logged_in==False, "No scitoken was found")
     def test_lookup_gw150914(self):
         try:
@@ -48,6 +49,7 @@ class TestLIGOFrames(unittest.TestCase):
         except requests.exceptions.HTTPError:
             self.skipTest("Cannot access gw_data_find.")
 
+    @unittest.skip("Skip while ER8 data is missing")
     @unittest.skipIf(logged_in==False, "No scitoken was found")
     @patch('shutil.copyfile')
     def test_download_gw150914(self, mock_shutil):
