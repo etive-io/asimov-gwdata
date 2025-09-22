@@ -80,7 +80,7 @@ def get_data(settings):  # detectors, start, end, duration, frames):
         source = settings.get("source")
         type = source.get("type", None)
         if type == "pesummary":
-            # Allow files to be extracted from a PESummary metafile.
+            # Allow calibration uncertainty envelopes to be extracted from a PESummary metafile.
             summaryfile = settings["source"]["location"]
             analysis = settings["source"].get("analysis", None)
             os.makedirs("calibration", exist_ok=True)
@@ -90,8 +90,11 @@ def get_data(settings):  # detectors, start, end, duration, frames):
 
         elif (type == "local storage") or (type is None):
             # This is the default behaviour for versions prior to 0.6.0
+            # NB that for Virgo calibration after O4b you must instead
+            # create a separate analysis using the frame type to download
+            # Virgo calibration uncertainty.
             directory = settings.get("locations", {}).get("calibration directory", None)
-            calibration.find_calibrations(
+            calibration.find_calibrations_on_cit(
                 settings["time"]["start"],
                 directory,
                 version=settings.get("calibration version", "v1"),
@@ -103,9 +106,13 @@ def get_data(settings):  # detectors, start, end, duration, frames):
             # distributing calibration this way at present.
                 calibration.get_calibration_from_frame(
                     ifo=ifo,
+                    prefix=settings.get("virgo prefix", "V1:Hrec_hoft_U00"),
+                    timestamp_channel=settings.get("virgo timestamp channel", None),
+                    frametype=settings.get("virgo frametype", "V1:HoftAR1"),
                     time=settings["time"]["start"],
                     host=settings.get("locations", {})\
-                    .get("datafind server", "datafind.igwn.org"))
+                    .get("datafind server", "datafind.igwn.org")
+                )
 
         settings["data"].remove("calibration")
 

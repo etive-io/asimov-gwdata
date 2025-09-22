@@ -72,6 +72,7 @@ class TestFrameCalibration(unittest.TestCase):
         get_calibration_from_frame(
             ifo='V1',
             time=self.time,
+            prefix="V1:Hrec_hoftRepro1AR_U01"
         )
 
         data_1 = np.loadtxt("calibration/V1.dat")

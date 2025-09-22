@@ -57,25 +57,62 @@ class CalibrationUncertaintyEnvelope:
 
         return instance
 
-    def _frame_to_envelopes(self, frame, calibration="U00", channel="V1:Hrec_hoftRepro1AR_U00_lastWriteGPS"):
+    def _frame_to_envelopes(self,
+                            frame,
+                            prefix="V1:Hrec_hoft_U00",
+                            timestamp_channel=None):
         """
         Read the representation of the calibration uncertainty envelope.
+
+        Parameters
+        ----------
+        frame : str
+           The path to the frame file which contains the calibration uncertainty envelope.
+        prefix: str
+           The prefix for the channel names to be looked-up.
+           Defaults to `V1:Hrec_hoft_U00`.
+        timestamp_channel: str
+           The channel to use to identify the nearest uncertainty envelope for a given datum.
+           This defaults to ``{prefix}_las
+
+        Returns
+        -------
+        envelope : `numpy.ndarray`
+          The calibration uncertainty envelope in bilby-compatible column ordering.
+
+        Notes
+        -----
+        At present this function will only work with Virgo frames, as
+        LIGO uncertainty envelopes are not currently distributed using this mechanism.
+        Instead they are distributed as text files which can be ingested directly by bilby
+        and other inference codes.
+
+        Uncertainty data is stored in channels with names such as
+        ``V1:Hrec_hoftRepro1AR_U00_mag_bias``, where there is limited standardisation of the
+        "prefix" component. As such this is configurable using the ``prefix`` argument. NB that
+        this can change based on things other than just changes in the calibration
+        (the ``U00`` component) so the user should be aware of this possibility.
+
+        
         """
 
+        if timestamp_channel is None:
+            timestamp_channel = f"{prefix}_lastWriteGPS"
+        
         channel_map = {
-            "amplitude": "V1:Hrec_hoftRepro1AR_U01_mag_bias",
-            "amplitude-1s": "V1:Hrec_hoftRepro1AR_U01_mag_minus1sigma",
-            "amplitude+1s": "V1:Hrec_hoftRepro1AR_U01_mag_plus1sigma",
-            "phase": "V1:Hrec_hoftRepro1AR_U01_phase_bias",
-            "phase+1s": "V1:Hrec_hoftRepro1AR_U01_phase_plus1sigma",
-            "phase-1s": "V1:Hrec_hoftRepro1AR_U01_phase_minus1sigma",
+            "amplitude":    f"{prefix}_mag_bias",
+            "amplitude-1s": f"{prefix}_mag_minus1sigma",
+            "amplitude+1s": f"{prefix}_mag_plus1sigma",
+            "phase":        f"{prefix}_phase_bias",
+            "phase+1s":     f"{prefix}_phase_plus1sigma",
+            "phase-1s":     f"{prefix}_phase_minus1sigma",
         }
 
         data = {}
         frfile = lalframe.FrOpen(os.path.dirname(frame), os.path.basename(frame))
         epoch = frfile.epoch
-        #lalframe.FrClose(frfile)
-        time = Frame(frame).nearest_calibration(time=epoch, channel=channel)
+
+        time = Frame(frame).nearest_calibration(time=epoch, channel=timestamp_channel)
         logger.info(f"Using the calibration data at {time}")
         stream = lalframe.FrStreamOpen(os.path.dirname(frame), os.path.basename(frame))
         for name, channel in channel_map.items():
@@ -86,7 +123,7 @@ class CalibrationUncertaintyEnvelope:
             frequencies = np.linspace(f0, f0 + delta_f * (n_bins - 1), n_bins)
             # Only include frequencies greater than 10Hz
             mask = (frequencies >= 10.0)
-        #lalframe.FrClose(stream)
+
         amp = data[channel_map["amplitude"]].data.data
         phase = data[channel_map["phase"]].data.data
         envelope = np.vstack(
@@ -102,7 +139,7 @@ class CalibrationUncertaintyEnvelope:
         )
         return envelope.T[mask].T
 
-    def frequency_domain_envelope(self, channel=None, frame=None, time=None, srate=16000):
+    def frequency_domain_envelope(self, frame=None, **kwargs):
         """
         Compute the frequency-domain representation of the envelope.
 
@@ -110,16 +147,9 @@ class CalibrationUncertaintyEnvelope:
         ----------
         frame : str
           The filepath of the frame file.
-        window : func
-          A function to use to envelope the data.
-        srate : int
-          The sampling rate of the data, defaults to 16000kHz, which is the Virgo default.
-
         """
         if frame:
-            td_data = self._frame_to_envelopes(frame, channel=channel)
-        elif time:
-            td_data = self._nds_to_envelopes(time)
+            td_data = self._frame_to_envelopes(frame, **kwargs)
         else:
             logger.error("No source specified for the calibration data.")
         return td_data
@@ -179,8 +209,8 @@ def get_calibration_from_frame(
         ifo,
         time,
         host="datafind.igwn.org",
-        calibration="U00",
-        lookup_channel="V1:Hrec_hoftRepro1AR_U01_lastWriteGPS",
+        prefix="V1:Hrec_hoft_U00",
+        timestamp_channel=None,
         frametype="V1:HoftAR1"):
     """
     Retrieve a calibration file from a frame file.
@@ -194,22 +224,32 @@ def get_calibration_from_frame(
     host : str, optional
       The URL of the datafind server which should be queried to retrieve frame file information.
       Defaults to datafind.igwn.org
-    lookup_channel: str
+    timestamp_channel: str
       The channel to check the location of the nearest calibration uncertainty envelope from.
     frametype : str, optional
       The frametype to be used to retrieve calibration uncertainty data from.
     """
+
+    if timestamp_channel is None:
+        timestamp_channel = f"{prefix}_lastWriteGPS"
+
     start = time - 60
     end = time + 60
     frame = get_data_frames_private([frametype], start, end, download=True, host=host)[1][ifo]
     frame_o = Frame(os.path.join("frames", frame))
-    nearest = frame_o.nearest_calibration(time=start, channel=lookup_channel)
+    nearest = frame_o.nearest_calibration(time=start, channel=timestamp_channel)
     logger.info(f"The nearest calibration is at {nearest}")
     if not nearest in frame_o:
         frame = get_data_frames_private([frametype], nearest-1, nearest+1, download=True, host=host)[1][0]
 
-    envelope = CalibrationUncertaintyEnvelope.from_frame(frame=os.path.join("frames", frame), channel=lookup_channel)
-    envelope.to_file(os.path.join("calibration", f"{ifo}.dat"))
+    envelope = CalibrationUncertaintyEnvelope.from_frame(
+        frame=os.path.join("frames", frame),
+        prefix=prefix,
+        timestamp_channel=timestamp_channel)
+
+    output = os.path.join("calibration", f"{ifo}.txt")
+    
+    envelope.to_file(output)
 
 
 def get_o3_style_calibration(dir, time):
@@ -264,7 +304,14 @@ def get_o4_style_calibration(dir, time, version="v1"):
     return data
 
 
-def find_calibrations(time, base_dir=None, version=None):
+def find_calibrations_on_cit(time,
+                      base_dir=None,
+                      version=None,
+                      datafind_host="datafind.igwn.org",
+                      virgo_prefix="V1:Hrec_hoft_U00",
+                      timestamp_channel=None,
+                      frametype="V1:HoftAR1"
+                      ):
     """
     Find the calibration file for a given time.
 
@@ -275,6 +322,20 @@ def find_calibrations(time, base_dir=None, version=None):
     base_dir: str
        The base directory to search for calibration envelopes.
        By default will use the default location.
+    version : str
+       The version number for LIGO (L1 and H1) calibration.
+    datafind_host: str
+       The URL to use for frame lookup using gw_data_find.
+       Defaults to ``datafind.igwn.org``.
+    virgo_prefix : str
+       The prefix to use for Virgo channels.
+       Defaults to ``V1:Hrec_hoft_U00``.
+    timestamp_channel : str
+       The channel to be used to look up the correct time for an uncertainty envelope.
+       Defaults to using ``{virgo_prefix}__lastWriteGPS``.
+    frametype : str
+       The frametype to use for extracting uncertainty envelopes.
+       Defaults to ``V1:HoftAR1``.
     """
 
     observing_runs = {
@@ -349,13 +410,21 @@ def find_calibrations(time, base_dir=None, version=None):
         data = get_o4_style_calibration(dir, time, version)
 
         logger.info("Virgo calibration has been requested but this must be retrieved from a frame file.")
-        data["V1"] = calibration.get_calibration_from_frame("V1", time)
+        data["V1"] = calibration.get_calibration_from_frame(            
+            "V1",
+            time,
+            host=datafind_host,
+            prefix=virgo_prefix,
+            timestamp_channel=timestamp_channel,
+            frametype=frametype            
+        )
 
         logger.debug(f"Found envelopes: {data}")
 
     elif not run:
         # This time is outwith a valid observing run
         data = {}
+        logger.warning("The requested time is not inside a recognised observing run. No calibration envelopes will be returned.")
 
     for ifo, envelope in data.items():
         copy_file(envelope, rename=f"{ifo}.txt", directory="calibration")
