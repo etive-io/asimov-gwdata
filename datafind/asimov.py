@@ -154,7 +154,7 @@ class Pipeline(asimov.pipeline.Pipeline):
             outputs["frames"] = frames
 
             c = self.production.event.meta["data"].get("data files", {})
-            c.update(calibration)
+            c.update(frames)
             self.production.event.meta["data"]["data files"] = c
 
 
