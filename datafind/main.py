@@ -45,13 +45,6 @@ def set_directory(path: (Path, str)):
         logger.info(f"Now working in {origin} again")
 
 
-def copy_file(path, rename, directory):
-    os.makedirs(directory, exist_ok=True)
-    local_filename = rename
-    shutil.copyfile(path, os.path.join(directory, local_filename))
-    return local_filename
-
-
 def download_file(url, directory="frames"):
     os.makedirs(directory, exist_ok=True)
     local_filename = url.split("/")[-1]
