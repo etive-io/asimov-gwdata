@@ -101,9 +101,12 @@ def get_data(settings):  # detectors, start, end, duration, frames):
             )
         elif type == "frame":
             # retrieve the calibration data from a frame file.
-            for ifo in settings.get("interferometer", ['V1']):
+            for ifo in settings.get("interferometers", ['V1']):
             # Default to only Virgo since this is the only IFO
             # distributing calibration this way at present.
+                if ifo != "V1":
+                    logger.error("Only V1 calibration can be retrieved from frame files.")
+                
                 calibration.get_calibration_from_frame(
                     ifo=ifo,
                     prefix=settings.get("virgo prefix", "V1:Hrec_hoft_U00"),

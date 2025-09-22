@@ -409,16 +409,6 @@ def find_calibrations_on_cit(time,
             dir = os.path.join(os.path.sep, "home", "cal", "public_html", "archive")
         data = get_o4_style_calibration(dir, time, version)
 
-        logger.info("Virgo calibration has been requested but this must be retrieved from a frame file.")
-        data["V1"] = calibration.get_calibration_from_frame(            
-            "V1",
-            time,
-            host=datafind_host,
-            prefix=virgo_prefix,
-            timestamp_channel=timestamp_channel,
-            frametype=frametype            
-        )
-
         logger.debug(f"Found envelopes: {data}")
 
     elif not run:
