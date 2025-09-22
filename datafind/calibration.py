@@ -5,6 +5,7 @@ import logging
 import os
 import glob
 import re
+import shutil
 
 from gwpy.timeseries import TimeSeriesDict
 
