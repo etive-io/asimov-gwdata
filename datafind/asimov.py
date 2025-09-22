@@ -153,7 +153,7 @@ class Pipeline(asimov.pipeline.Pipeline):
 
             outputs["frames"] = frames
 
-            self.production.event.meta["data"]["data files"] = frames
+            self.production.event.meta["data"].get("data files", {}).update(frames)
 
         if os.path.exists(os.path.join(self.production.rundir, "cache")):
             results_dir = glob.glob(os.path.join(self.production.rundir, "cache", "*"))
@@ -201,7 +201,7 @@ class Pipeline(asimov.pipeline.Pipeline):
 
             outputs["calibration"] = calibration
 
-            self.production.event.meta["data"]["calibration"] = calibration
+            self.production.event.meta["data"].get("calibration", {}).update(calibration)
 
         if os.path.exists(os.path.join(self.production.rundir, "posterior")):
             results = glob.glob(os.path.join(self.production.rundir, "posterior", "*"))
