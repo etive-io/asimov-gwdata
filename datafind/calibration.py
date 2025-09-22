@@ -7,6 +7,8 @@ import glob
 import re
 import shutil
 
+import click
+
 from gwpy.timeseries import TimeSeriesDict
 
 import lal, lalframe
