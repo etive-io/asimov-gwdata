@@ -36,7 +36,7 @@ def download_file(url, directory="frames", name=None):
         elif parsed_url.scheme == "osdf":
             with Session() as sess:
                 sess.mount("osdf://", PelicanAdapter("osdf"))
-                with sess.get(url, stream=True,  token_scope="read:/ligo") as r:
+                with sess.get(url, stream=True,  token_scope="read:/ligo read:/virgo read:/kagra read:/frames read:/shared") as r:
                     with open(os.path.join(directory, local_filename), "wb") as f:
                         shutil.copyfileobj(r.raw, f)
 
