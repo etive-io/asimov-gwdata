@@ -76,7 +76,9 @@ class Pipeline(asimov.pipeline.Pipeline):
             "request_memory": self.production.meta.get("scheduler", {}).get("request memory", "1024MB"),
             "batch_name": f"gwdata/{name}",
             "+flock_local": "True",
-            "+DESIRED_Sites": htcondor.classad.quote("nogrid"),
+            "+DESIRED_Sites": htcondor.classad.quote("none"),
+            "use_oauth_services": "scitoken",
+            
         }
 
         accounting_group = self.production.meta.get("scheduler", {}).get(
