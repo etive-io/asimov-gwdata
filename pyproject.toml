@@ -32,6 +32,9 @@ dependencies = [
 	"numpy",
 	"requests",
 	"click",
+	"igwn-auth-utils",
+	"requests-pelican",
+	"requests-scitokens >= 0.1.0",
 ]
 
 [project.optional-dependencies]

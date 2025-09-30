@@ -1,8 +1,22 @@
 import unittest
-from unittest.mock import Mock, patch
-import glob
-from datafind.main import get_o4_style_calibration
-from datafind.calibration import CalibrationUncertaintyEnvelope
+from unittest.mock import patch
+import os
+import numpy as np
+import igwn_auth_utils
+
+try:
+    a = igwn_auth_utils.find_scitoken(audience="https://datafind.igwn.org", scope="gwdatafind.read")
+    logged_in=True
+except igwn_auth_utils.IgwnAuthError as e:
+    print(e)
+    logged_in=False
+
+
+#from datafind.frames import get_data_frames_private
+from datafind.calibration import    (
+    CalibrationUncertaintyEnvelope,
+    get_calibration_from_frame,
+    get_o4_style_calibration)
 
 class CalibrationDataTests(unittest.TestCase):
     """
@@ -23,7 +37,7 @@ class CalibrationDataTests(unittest.TestCase):
 
         output = get_o4_style_calibration(dir="test", time=1370242226.4)
 
-        self.assertEqual(output.get('L1', None), None)
+        self.assertEqual(output.get('L1', 0), 0)
         self.assertEqual(output['H1'], file_list[1])
 
     @patch('glob.glob')
@@ -46,20 +60,22 @@ class CalibrationDataTests(unittest.TestCase):
         self.assertEqual(output['H1'], file_list[1])
         self.assertEqual(output['L1'], file_list[-1])
 
-class VirgoCalibration(unittest.TestCase):
-    """Test Virgo-style calibration uncertainty, distributed in frames."""
 
-
+@unittest.skipIf(logged_in==False, "No scitoken was found")
+class TestFrameCalibration(unittest.TestCase):
+    """Test the workflow for finding a frame and extracting a calibration envelope."""
     def setUp(self):
-        """Create a calibration envelope object"""
-        self.test_frame = "tests/test_data/V1.gwf"
+        self.time = 1415277701 #1412725132
 
-        self.envelope = CalibrationUncertaintyEnvelope(frame=self.test_frame)
+    def test_lookup(self):
+        
+        get_calibration_from_frame(
+            ifo='V1',
+            time=self.time,
+            prefix="V1:Hrec_hoftRepro1AR_U01"
+        )
 
-    def test_plot(self):
-        """Create a plot of the envelope"""
-        self.envelope.plot("test_envelope.png")
+        data_1 = np.loadtxt("calibration/V1.dat")
+        data_2 = np.loadtxt("tests/test_data/test_envelope.txt")
 
-    def test_save_file(self):
-        """Create a text file of the envelope."""
-        self.envelope.to_file("test_envelope.txt")
+        np.testing.assert_equal(data_1, data_2)

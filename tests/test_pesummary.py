@@ -8,6 +8,7 @@ import shutil
 import urllib.request
 
 from datafind.metafiles import Metafile
+from datafind import calibration
 
 class TestPSDExtraction(unittest.TestCase):
 
@@ -16,10 +17,10 @@ class TestPSDExtraction(unittest.TestCase):
         if not os.path.exists("tests/GW150914.hdf5"):
             urllib.request.urlretrieve("https://zenodo.org/records/6513631/files/IGWN-GWTC2p1-v2-GW150914_095045_PEDataRelease_mixed_cosmo.h5?download=1",
                                        "tests/GW150914.hdf5")
-    
+
     def setUp(self):
         self.summaryfile = "tests/GW150914.hdf5"
-    
+
     def test_dump_psd(self):
         with Metafile(self.summaryfile) as metafile:
             metafile.psd()['L1'].to_ascii("L1.txt")
@@ -41,3 +42,23 @@ class TestPSDExtraction(unittest.TestCase):
         import os.path
         self.assertTrue(os.path.isfile("H1-psd.xml.gz"))
         self.assertTrue(os.path.isfile("L1-psd.xml.gz"))
+
+class TestCalibrationExtraction(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        if not os.path.exists("tests/GW150914.hdf5"):
+            urllib.request.urlretrieve("https://zenodo.org/records/6513631/files/IGWN-GWTC2p1-v2-GW150914_095045_PEDataRelease_mixed_cosmo.h5?download=1",
+                                       "tests/GW150914.hdf5")
+
+    def setUp(self):
+        self.summaryfile = "tests/GW150914.hdf5"
+
+    def test_dump_calibration(self):
+        with Metafile(self.summaryfile) as metafile:
+            metafile.calibration()['L1'].to_file("L1.dat")
+            metafile.calibration()['H1'].to_file("H1.dat")
+
+        data = calibration.CalibrationUncertaintyEnvelope.from_file("L1.dat")
+
+        self.assertLessEqual(20 - float(data.data[0][0]), 1E-5)

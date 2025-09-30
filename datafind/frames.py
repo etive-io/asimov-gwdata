@@ -3,14 +3,74 @@ Data find logic for locating frame files.
 """
 
 from gwosc.locate import get_urls
-from gwdatafind import find_urls, Session
+from gwdatafind import find_urls
+from igwn_auth_utils import Session
+from requests_pelican import PelicanAdapter
 from .utils import download_file
+import os
+import logging
+import numpy as np
+from gwpy.timeseries import TimeSeries, TimeSeriesDict
+from gwpy.io.gwf import get_channel_names
+
+logger = logging.getLogger("gwdata")
 
 
-def get_data_frames_private(types,
-                            start, end,
-                            download=False,
-                            host="datafind.igwn.org"):
+class Frame:
+    """
+    A lightweight class to represent a data Frame.
+    """
+
+    def __init__(self, framefile):
+        self.framefile = framefile
+
+    @property
+    def channels(self):
+        return get_channel_names(self.framefile)
+        
+    def __contains__(self, time):
+        channel = get_channel_names(self.framefile)[0]
+        times = TimeSeries.read(self.framefile, channel=channel).times.value
+        if times[0] <= time <= times[-1]:
+            return True
+        else:
+            return False
+
+    def nearest_calibration(
+        self, time, channel="V1:Hrec_hoft_U00_lastWriteGPS"
+    ):
+        """
+        Find the nearest calibration data in the file to a given time, and return in.
+
+        Parameters
+        ----------
+        time : float
+           A GPS time for which the calibration should be returned.
+        channel: str
+           The channel which should be checked to find the nearest calibration envelope.
+
+        Returns
+        -------
+        array-like: If the calibration is in this file it is returned as an array.
+        None: If the calibration is not present in this file None is returned.
+        """        
+        data = TimeSeries.read(self.framefile, channel=channel)
+        times = data.times
+        nearest = np.argmin(np.abs(times.value - time))
+        # # Check if the nearest value is actually one end of the timeseries
+        # # and then check that it definitely isn't that time
+        # # before returning None
+        # if ((nearest == 0) or (nearest == len(times))) and (
+        #     (times.value - time) > (times[1] - times[0]).value
+        # ):
+        #     return None
+        # else:
+        return data[nearest].value
+
+
+def get_data_frames_private(
+    types, start, end, download=False, host="datafind.igwn.org"
+):
     """
     Gather data frames which are not available via GWOSC.
 
@@ -37,9 +97,9 @@ def get_data_frames_private(types,
 
     urls = {}
     files = {}
-
     detectors = [type.split(":")[0] for type in types]
     with Session() as sess:
+        sess.mount("osdf://", PelicanAdapter("osdf"))
         for ifo, type in zip(detectors, types):
             urls[ifo] = find_urls(
                 ifo[0],
@@ -48,7 +108,9 @@ def get_data_frames_private(types,
                 end,
                 host=host,
                 session=sess,
+                urltype="osdf",
             )
+    logger.info(urls)
     if download:
         for ifo, det_urls in urls.items():
             for url in det_urls:
@@ -88,9 +150,7 @@ def get_data_frames_gwosc(detectors, start, end, duration):
         with open(os.path.join("cache", f"{detector}.cache"), "w") as cache_file:
             cache_file.write(cache_string)
 
-    click.echo("Frames found")
-    click.echo("------------")
+    logger.info("Frames found")
     for det, url in files.items():
-        click.echo(click.style(f"{det}: ", bold=True), nl=False)
-        click.echo(url[0])
-    return urls, files
+        logger.info((f"{det}: {url[0]}"))
+    return urls

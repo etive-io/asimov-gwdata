@@ -76,7 +76,9 @@ class Pipeline(asimov.pipeline.Pipeline):
             "request_memory": self.production.meta.get("scheduler", {}).get("request memory", "1024MB"),
             "batch_name": f"gwdata/{name}",
             "+flock_local": "True",
-            "+DESIRED_Sites": htcondor.classad.quote("nogrid"),
+            "+DESIRED_Sites": htcondor.classad.quote("none"),
+            "use_oauth_services": "scitoken",
+            
         }
 
         accounting_group = self.production.meta.get("scheduler", {}).get(
@@ -148,12 +150,15 @@ class Pipeline(asimov.pipeline.Pipeline):
             frames = {}
 
             for frame in results_dir:
-                ifo = frame.split("/")[-1].split("_")[0].split("-")[1]
+                ifo = frame.split("/")[-1].split("_")[0].split("-")[0]+"1"
                 frames[ifo] = frame
 
             outputs["frames"] = frames
 
-            self.production.event.meta["data"]["data files"] = frames
+            c = self.production.event.meta["data"].get("data files", {})
+            c.update(frames)
+            self.production.event.meta["data"]["data files"] = c
+
 
         if os.path.exists(os.path.join(self.production.rundir, "cache")):
             results_dir = glob.glob(os.path.join(self.production.rundir, "cache", "*"))
@@ -165,22 +170,23 @@ class Pipeline(asimov.pipeline.Pipeline):
 
             outputs["caches"] = cache
             self.production.event.meta['data']['cache files'] = cache
-            
+
         if os.path.exists(os.path.join(self.production.rundir, "psds")):
             results_dir = glob.glob(os.path.join(self.production.rundir, "psds", "*.dat"))
             psds = {}
 
             for psd in results_dir:
-                ifo = os.path.splitext(psds)[0]
+                ifo = os.path.splitext(os.path.basename(psd))[0]
                 psds[ifo] = psd
 
             outputs["psds"] = psds
-                
+            self.production.event.meta["psds"] = psds
+
             results_dir = glob.glob(os.path.join(self.production.rundir, "psds", "*.xml.gz"))
             xml_psds = {}
 
             for psd in results_dir:
-                ifo = os.path.splitext(psds)[0]
+                ifo = os.path.splitext(os.path.basename(psd))[0]
                 xml_psds[ifo] = psd
 
             outputs["xml psds"] = xml_psds
@@ -200,8 +206,10 @@ class Pipeline(asimov.pipeline.Pipeline):
 
             outputs["calibration"] = calibration
 
-            self.production.event.meta["data"]["calibration"] = calibration
-
+            c = self.production.event.meta["data"].get("calibration", {})
+            c.update(calibration)
+            self.production.event.meta["data"]["calibration"] = c
+            
         if os.path.exists(os.path.join(self.production.rundir, "posterior")):
             results = glob.glob(os.path.join(self.production.rundir, "posterior", "*"))
 

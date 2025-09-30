@@ -8,6 +8,8 @@ name: get-data
 pipeline: gwdata
 download:
   - posterior
+  - calibration
+  - psd
 source:
   type: pesummary
   location: test.h5
