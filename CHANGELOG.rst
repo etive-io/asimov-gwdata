@@ -1,3 +1,25 @@
+0.6.0
+=====
+
+This is a feature release which introduces new functionality.
+
+Breaking changes
+----------------
+
+This release is not believed to introduce any backwards-incompatible changes.
+
+New Features
+------------
+
++ Ability to read calibration uncertainty data from GW Frame files in addition to ascii text files. At present this is only supported for Virgo as LIGO do not distribute data in this format.
++ Ability to download frames which are behind authentication using scitokens.
+
+Merges
+------
+
++ `ligo!20 <https://git.ligo.org/asimov/pipelines/gwdata/-/merge_requests/20>`_: Updated the mechanism by which asimov-gwdata finds and downloads frame files which require authentication.
++ `ligo!21 <https://git.ligo.org/asimov/pipelines/gwdata/-/merge_requests/21>`_: Created a workflow to extract calibration uncertainty envelopes from frame files.
+
 0.5.0
 =====
 
