@@ -77,7 +77,7 @@ class Pipeline(asimov.pipeline.Pipeline):
             "batch_name": f"gwdata/{name}",
             "+flock_local": "True",
             "+DESIRED_Sites": htcondor.classad.quote("none"),
-            "use_oauth_services": "scitoken",
+            "use_oauth_services": "scitokens",
             
         }
 
