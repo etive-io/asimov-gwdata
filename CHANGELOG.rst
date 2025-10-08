@@ -1,3 +1,20 @@
+0.6.1
+=====
+
+This is a bug fix release.
+
+Breaking changes
+----------------
+
+This release is not believed to introduce any backwards-incompatible changes.
+
+Merges
+------
+
++ `ligo!24 <https://git.ligo.org/asimov/pipelines/gwdata/-/merge_requests/24>`_: Fixes an error related to htcondor authentication.
+
+
+
 0.6.0
 =====
 
