@@ -1,3 +1,18 @@
+0.6.2
+=====
+
+This is a bug fix release.
+
+Breaking changes
+----------------
+
+This release is not believed to introduce any backwards-incompatible changes.
+
+Merges
+------
+
++ `ligo!25 <https://git.ligo.org/asimov/pipelines/gwdata/-/merge_requests/25>`_: Fixes an error where the frame files from calibration are passed from this task.
+
 0.6.1
 =====
 
