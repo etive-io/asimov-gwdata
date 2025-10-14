@@ -145,7 +145,7 @@ class Pipeline(asimov.pipeline.Pipeline):
         Collect the assets for this job.
         """
         outputs = {}
-        if os.path.exists(os.path.join(self.production.rundir, "frames")):
+        if os.path.exists(os.path.join(self.production.rundir, "frames")) and ("frames" in settings["data"]):
             results_dir = glob.glob(os.path.join(self.production.rundir, "frames", "*"))
             frames = {}
 
