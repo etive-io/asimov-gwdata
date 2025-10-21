@@ -78,7 +78,7 @@ class Pipeline(asimov.pipeline.Pipeline):
             "+flock_local": "True",
             "+DESIRED_Sites": htcondor.classad.quote("none"),
             "use_oauth_services": "scitokens",
-            
+            "environment": "BEARER_TOKEN_FILE=$$(CondorScratchDir)/.condor_creds/scitokens.use",
         }
 
         accounting_group = self.production.meta.get("scheduler", {}).get(
@@ -129,8 +129,13 @@ class Pipeline(asimov.pipeline.Pipeline):
     def detect_completion(self):
         self.logger.info("Checking for completion.")
         assets = self.collect_assets()
+        settings = self.production.meta
+        event_settings = self.production.event.meta
         if len(list(assets.keys())) > 0:
             self.logger.info("Outputs detected, job complete.")
+            return True
+        elif ("V1" in settings.get("interferometers", {})) and ("V1" not in event_settings.get("interferometers", {})):
+            self.logger.info("Virgo data not required for the event.")
             return True
         else:
             self.logger.info("Datafind job completion was not detected.")
@@ -145,7 +150,8 @@ class Pipeline(asimov.pipeline.Pipeline):
         Collect the assets for this job.
         """
         outputs = {}
-        if os.path.exists(os.path.join(self.production.rundir, "frames")) and ("frames" in settings["data"]):
+        settings = self.production.meta
+        if os.path.exists(os.path.join(self.production.rundir, "frames")) and ("frames" in settings.get("download", {})):
             results_dir = glob.glob(os.path.join(self.production.rundir, "frames", "*"))
             frames = {}
 
