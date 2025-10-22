@@ -1,3 +1,18 @@
+0.6.3
+=====
+
+This is a bug fix release.
+
+Breaking changes
+----------------
+
+This release is not believed to introduce any backwards-incompatible changes.
+
+Merges
+------
+
++ `ligo!27 <https://git.ligo.org/asimov/pipelines/gwdata/-/merge_requests/27>`_: Fixes an issue with scitokens authentication when downloading frame files.
+
 0.6.2
 =====
 
