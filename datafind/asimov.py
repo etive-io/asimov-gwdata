@@ -130,12 +130,16 @@ class Pipeline(asimov.pipeline.Pipeline):
         self.logger.info("Checking for completion.")
         assets = self.collect_assets()
         settings = self.production.meta
+        downloads = set(settings.get("download", []))
+
         event_settings = self.production.event.meta
         if len(list(assets.keys())) > 0:
             self.logger.info("Outputs detected, job complete.")
             return True
-        elif ("V1" in settings.get("interferometers", {})) and ("V1" not in event_settings.get("interferometers", {})):
-            self.logger.info("Virgo data not required for the event.")
+        elif (downloads == {"calibration"}) \
+                and ("V1" in settings.get("interferometers", {})) \
+                and ("V1" not in event_settings.get("interferometers", {})):
+            self.logger.info("Virgo calibration data are not required for the event.")
             return True
         else:
             self.logger.info("Datafind job completion was not detected.")
