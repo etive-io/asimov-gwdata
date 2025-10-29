@@ -57,7 +57,7 @@ virgo prefix: {{ production.meta['virgo timestamp channel'] }}
 {% endif %}
 
 
-{%- if production.meta contains 'frame types' %}
+{%- if production.meta['data'] contains 'frame types' %}
 frame types:
 {%- for ifo in ifos %}
   - "{{ifo}}:{{ production.meta['frame types'][ifo] }}"
