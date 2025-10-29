@@ -111,6 +111,7 @@ def get_data_frames_private(
                 urltype="osdf",
             )
     logger.info(urls)
+    print(urls)
     if download:
         for ifo, det_urls in urls.items():
             for url in det_urls:
