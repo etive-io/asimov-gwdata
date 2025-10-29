@@ -61,7 +61,7 @@ def get_data(settings):  # detectors, start, end, duration, frames):
         settings = yaml.safe_load(file_handle)
 
     if "frames" in settings["data"]:
-        if settings.get("source", {}).get("type", None) == "osdf":
+        if settings.get("source", {}).get("frames", None) == "osdf":
             get_data_frames_private(
                 settings["interferometers"],
                 settings["time"]["start"],
@@ -70,8 +70,8 @@ def get_data(settings):  # detectors, start, end, duration, frames):
                 host=settings.get("locations", {})\
                     .get("datafind server", "datafind.igwn.org")
             )
-        elif (settings.get("source", {}).get("type", None) == "gwosc") \
-            or (settings.get("source", {}).get("type", None) is None):
+        elif (settings.get("source", {}).get("frames", None) == "gwosc") \
+            or (settings.get("source", {}).get("frames", None) is None):
             get_data_frames_gwosc(
                 settings["interferometers"],
                 settings["time"]["start"],
