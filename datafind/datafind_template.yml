@@ -57,8 +57,8 @@ virgo prefix: {{ production.meta['virgo timestamp channel'] }}
 {% endif %}
 
 
-{%- if production.meta['data'] contains 'frame types' %}
-frame types: {{ production.meta['data']['frame types'] }}
+{%- if production.meta contains 'frame types' %}
+frame types: {{ production.meta['frame types'] }}
 {%- endif}
 
 {%- if production.meta contains 'calibration version' %}
