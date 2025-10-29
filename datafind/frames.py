@@ -101,9 +101,11 @@ def get_data_frames_private(
     with Session() as sess:
         sess.mount("osdf://", PelicanAdapter("osdf"))
         for ifo, type in zip(detectors, types):
+            frame_type = type.split(":")[1]
+            print(f"Finding {frame_type} frames for {ifo} from {start} to {end}")
             urls[ifo] = find_urls(
                 ifo[0],
-                type.split(":")[-1],
+                frame_type,
                 start,
                 end,
                 host=host,
