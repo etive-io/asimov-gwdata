@@ -62,7 +62,7 @@ frame types:
 {%- for ifo in ifos}
   - "{{ifo}}:{{ production.meta['frame types'][ifo] }}"
 {%- endfor %}
-{%- endif}
+{%- endif %}
 
 {%- if production.meta contains 'calibration version' %}
 calibration version: {{ production.meta['calibration version'] }}
