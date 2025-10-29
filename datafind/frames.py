@@ -119,6 +119,16 @@ def get_data_frames_private(
             for url in det_urls:
                 print(f"Downloading {url}")
                 files[ifo] = download_file(url, directory="frames")
+
+        os.makedirs("cache", exist_ok=True)
+        for detector in detectors:
+            cache_string = ""
+            for frame_file in files[detector]:
+                cf = frame_file.split(".")[0].split("-")
+                frame_file = os.path.join("frames", frame_file)
+                cache_string += f"{cf[0]}\t{cf[1]}\t{cf[2]}\t{cf[3]}\tfile://localhost{os.path.abspath(frame_file)}\n"
+            with open(os.path.join("cache", f"{detector}.cache"), "w") as cache_file:
+                cache_file.write(cache_string)
     return urls, files
 
 
