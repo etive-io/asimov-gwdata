@@ -70,7 +70,8 @@ def get_data(settings):  # detectors, start, end, duration, frames):
                 host=settings.get("locations", {})\
                     .get("datafind server", "datafind.igwn.org")
             )
-        else:
+        elif (settings.get("source", {}).get("type", None) == "gwosc") \
+            or (settings.get("source", {}).get("type", None) is None):
             get_data_frames_gwosc(
                 settings["interferometers"],
                 settings["time"]["start"],
