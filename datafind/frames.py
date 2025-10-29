@@ -114,6 +114,7 @@ def get_data_frames_private(
     if download:
         for ifo, det_urls in urls.items():
             for url in det_urls:
+                print(f"Downloading {url}")
                 files[ifo] = download_file(url, directory="frames")
     return urls, files
 
