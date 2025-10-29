@@ -19,7 +19,7 @@ import logging
 from .metafiles import Metafile
 from . import calibration
 
-from .frames import get_data_frames_gwosc
+from .frames import get_data_frames_gwosc, get_data_frames_private
 
 logger = logging.getLogger("gwdata")
 
@@ -61,12 +61,22 @@ def get_data(settings):  # detectors, start, end, duration, frames):
         settings = yaml.safe_load(file_handle)
 
     if "frames" in settings["data"]:
-        get_data_frames_gwosc(
-            settings["interferometers"],
-            settings["time"]["start"],
-            settings["time"]["end"],
-            settings["time"]["duration"],
-        )
+        if settings.get("source", {}).get("type", None) == "osdf":
+            get_data_frames_private(
+                settings["interferometers"],
+                settings["time"]["start"],
+                settings["time"]["end"],
+                download=True,
+                host=settings.get("locations", {})\
+                    .get("datafind server", "datafind.igwn.org")
+            )
+        else:
+            get_data_frames_gwosc(
+                settings["interferometers"],
+                settings["time"]["start"],
+                settings["time"]["end"],
+                settings["time"]["duration"],
+            )
         settings["data"].remove("frames")
 
     if "calibration" in settings["data"]:
