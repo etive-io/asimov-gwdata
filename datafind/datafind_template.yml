@@ -29,6 +29,9 @@ time:
 data: {{ production.meta['download'] | default: "['frames']" }}
 {% if production.meta contains 'source' %}
 source:
+  {%- if production.meta['source'] contains 'frames' %}
+  frames: {{ production.meta['source']['frames'] }}
+  {%- endif %}
   type: {{ production.meta['source']['type'] }}
   location: {{ production.meta['source']['location'] }}
   analysis: {{ production.meta['source']['analysis'] }}
@@ -54,7 +57,12 @@ virgo prefix: {{ production.meta['virgo timestamp channel'] }}
 {% endif %}
 
 
-
+{%- if production.meta['data'] contains 'frame types' %}
+frame types:
+{%- for ifo in ifos %}
+  - "{{ifo}}:{{ production.meta['data']['frame types'][ifo] }}"
+{%- endfor %}
+{%- endif %}
 
 {%- if production.meta contains 'calibration version' %}
 calibration version: {{ production.meta['calibration version'] }}

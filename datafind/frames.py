@@ -101,9 +101,11 @@ def get_data_frames_private(
     with Session() as sess:
         sess.mount("osdf://", PelicanAdapter("osdf"))
         for ifo, type in zip(detectors, types):
+            frame_type = type.split(":")[1]
+            print(f"Finding {frame_type} frames for {ifo} from {start} to {end}")
             urls[ifo] = find_urls(
                 ifo[0],
-                type.split(":")[-1],
+                frame_type,
                 start,
                 end,
                 host=host,
@@ -111,10 +113,22 @@ def get_data_frames_private(
                 urltype="osdf",
             )
     logger.info(urls)
+    print(urls)
     if download:
         for ifo, det_urls in urls.items():
             for url in det_urls:
+                print(f"Downloading {url}")
                 files[ifo] = download_file(url, directory="frames")
+
+        os.makedirs("cache", exist_ok=True)
+        for detector in detectors:
+            cache_string = ""
+            frame_file = files[detector]
+            cf = frame_file.split(".")[0].split("-")
+            frame_file = os.path.join("frames", frame_file)
+            cache_string += f"{cf[0]}\t{cf[1]}\t{cf[2]}\t{cf[3]}\tfile://localhost{os.path.abspath(frame_file)}\n"
+            with open(os.path.join("cache", f"{detector}.cache"), "w") as cache_file:
+                cache_file.write(cache_string)
     return urls, files
 
 
