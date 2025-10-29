@@ -14,5 +14,21 @@ We also need to set the ``file length``, which can be either ``32`` or ``4096`` 
     file length: 4096
     download:
       - frames	
+    source:
+      type: gwosc
 
 
+It's also possible to use ``asimov-gwdata`` to access private data frames stored on an OSDf server, provided you have a valid scitoken.
+To do this, set the ``source`` type to ``osdf``.
+
+.. code-block:: yaml
+
+    kind: analysis
+    name: get-data
+    pipeline: gwdata
+    file length: 4096
+    download:
+      - frames	
+    source:
+      type: osdf
+      datafind server: datafind.igwn.org
