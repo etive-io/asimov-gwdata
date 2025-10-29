@@ -1,3 +1,18 @@
+0.7.0
+=====
+
+This is a minor feature release which introduces new functionality.
+
+Breaking changes
+----------------
+
+This release is not believed to introduce any backwards-incompatible changes.
+
+Merges
+------
+
++ `ligo!27 <https://git.ligo.org/asimov/pipelines/gwdata/-/merge_requests/28>`_: Adds the ability to download private frame files from an OSDf server using scitokens authentication.
+
 0.6.3
 =====
 
