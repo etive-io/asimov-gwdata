@@ -63,7 +63,7 @@ def get_data(settings):  # detectors, start, end, duration, frames):
     if "frames" in settings["data"]:
         if settings.get("source", {}).get("frames", None) == "osdf":
             get_data_frames_private(
-                settings.get("data", {}).get("frame types", []),
+                settings.get("frame types", []),
                 settings["time"]["start"],
                 settings["time"]["end"],
                 download=True,
