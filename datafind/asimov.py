@@ -170,7 +170,7 @@ class Pipeline(asimov.pipeline.Pipeline):
             self.production.event.meta["data"]["data files"] = c
 
 
-        if os.path.exists(os.path.join(self.production.rundir, "cache")):
+        if os.path.exists(os.path.join(self.production.rundir, "cache")) and ("frames" in settings.get("download", {})):
             results_dir = glob.glob(os.path.join(self.production.rundir, "cache", "*"))
             cache = {}
 

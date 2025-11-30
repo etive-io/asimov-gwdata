@@ -26,7 +26,7 @@ classifiers = [
 ]
 requires-python = ">=3.7"
 dependencies = [
-        "gwosc",
+	"gwosc",
 	"asimov>=0.4.0",
 	"pesummary",
 	"numpy",
@@ -35,6 +35,9 @@ dependencies = [
 	"igwn-auth-utils",
 	"requests-pelican",
 	"requests-scitokens >= 0.1.0",
+	"gwpy",
+	"matplotlib",
+	"otter-report",
 ]
 
 [project.optional-dependencies]
