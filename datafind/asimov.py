@@ -10,6 +10,7 @@ from asimov import config
 import htcondor
 from asimov.utils import set_directory
 
+from .report import Report
 
 class Pipeline(asimov.pipeline.Pipeline):
     """
@@ -230,6 +231,8 @@ class Pipeline(asimov.pipeline.Pipeline):
     def html(self):
         """Return the HTML representation of this pipeline."""
         out = ""
+        report = Report(self.production, 
+                        webdir=config['general']['webroot']+"/"+self.production.event.name+"/"+self.production.name)
         if self.production.status in {"finished", "uploaded"}:
             out += """<div class="asimov-pipeline">"""
             pp = pprint.PrettyPrinter(indent=4)

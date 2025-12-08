@@ -58,6 +58,3 @@ class Report:
 
             with self.report as report:
                 report + spec_f
-
-
-
