@@ -17,7 +17,9 @@ plt.rcParams.update({# Use mathtext, not LaTeX
 
 def plot_spectrogram(frame: str, 
                      channel: str, 
-                     time: float, 
+                     start: float = None, 
+                     end: float = None,
+                     time: float = None,
                      outseg_before: float = 2.0, 
                      outseg_after: float = 2.0,
                      max_freq: float = 2048.0,
@@ -48,15 +50,26 @@ def plot_spectrogram(frame: str,
 
     fig, ax = plt.subplots(nrows=1, ncols=1, figsize=[21, 10/1.62])
     
-    start = time - outseg_before - 10
-    end = time + outseg_after + 10
+    if time is None:
+        start = start - outseg_before
+        end = end + outseg_after
 
-    t1 = TimeSeries.read(frame, channel, start, end, verbose=True)
+        time = (start + end) / 2.0
+
+    else:
+        start = time - outseg_before
+        end = time + outseg_after
+
+    t1 = TimeSeries.read(frame, channel, start-20, end+20, verbose=True)
+
+    print(channel)
+    print(start, end)
+    print(len(t1))
 
     qspecgram = t1.q_transform(
             frange=(min_freq, max_freq),
             qrange=q_range,
-            outseg=(time - outseg_before, time + outseg_after))
+            outseg=(start, end))
 
     
     Z = qspecgram.value

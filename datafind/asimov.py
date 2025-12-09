@@ -3,14 +3,13 @@ import os
 import configparser
 import glob
 import pprint
+import shutil
 
 import asimov.pipeline
 
 from asimov import config
 import htcondor
 from asimov.utils import set_directory
-
-from .report import Report
 
 class Pipeline(asimov.pipeline.Pipeline):
     """
@@ -231,8 +230,29 @@ class Pipeline(asimov.pipeline.Pipeline):
     def html(self):
         """Return the HTML representation of this pipeline."""
         out = ""
-        report = Report(self.production, 
-                        webdir=config['general']['webroot']+"/"+self.production.event.name+"/"+self.production.name)
+
+        webdir = os.path.join(
+                config.get("project", "root"),
+                config.get("general", "webroot"),
+                self.production.event.name,
+                self.production.name
+            )
+
+        if not os.path.exists(webdir):
+            os.makedirs(webdir)
+
+        if os.path.exists(os.path.join(self.production.rundir, "report")):
+            shutil.copytree(
+                os.path.join(self.production.rundir, "report"),
+                webdir,
+                dirs_exist_ok=True
+            )
+            pages_dir = os.path.join(
+                self.production.event.name, self.production.name
+            )
+
+            out += f"<p><a href='{pages_dir}'>Summary report</a></p>"
+
         if self.production.status in {"finished", "uploaded"}:
             out += """<div class="asimov-pipeline">"""
             pp = pprint.PrettyPrinter(indent=4)
