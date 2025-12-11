@@ -39,19 +39,19 @@ class GraceDB:
         try:
             file_obj = self.client.files(self.gid, gfile)
 
-            with open("download.file", "w") as dest_file:
+            with open(f"{gfile}", "w") as dest_file:
                 dest_file.write(file_obj.read().decode())
 
             if "xml" in gfile:
                 # Convert to the new xml format
-                command = ["ligolw_no_ilwdchar", "download.file"]
+                command = ["ligolw_no_ilwdchar", f"{gfile}"]
                 pipe = subprocess.Popen(
                     command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
                 )
                 out, err = pipe.communicate()
 
             self.repository.add_file(
-                "download.file",
+                f"{gfile}",
                 destination,
                 commit_message=f"Downloaded {gfile} from GraceDB",
             )
