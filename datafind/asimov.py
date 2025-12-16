@@ -7,7 +7,17 @@ import pprint
 import asimov.pipeline
 
 from asimov import config
-import htcondor
+
+import warnings
+try:
+    warnings.filterwarnings("ignore", module="htcondor2")
+    import htcondor2 as htcondor  # NoQA
+    import classad2 as classad  # NoQA
+except ImportError:
+    warnings.filterwarnings("ignore", module="htcondor")
+    import htcondor  # NoQA
+    import classad  # NoQA
+
 from asimov.utils import set_directory
 
 
@@ -76,7 +86,7 @@ class Pipeline(asimov.pipeline.Pipeline):
             "request_memory": self.production.meta.get("scheduler", {}).get("request memory", "1024MB"),
             "batch_name": f"gwdata/{name}",
             "+flock_local": "True",
-            "+DESIRED_Sites": htcondor.classad.quote("none"),
+            "+DESIRED_Sites": classad.quote("none"),
             "use_oauth_services": "scitokens",
             "environment": "BEARER_TOKEN_FILE=$$(CondorScratchDir)/.condor_creds/scitokens.use",
         }
