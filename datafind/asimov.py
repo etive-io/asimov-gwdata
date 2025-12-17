@@ -87,9 +87,11 @@ class Pipeline(asimov.pipeline.Pipeline):
             "batch_name": f"gwdata/{name}",
             "+flock_local": "True",
             "+DESIRED_Sites": classad.quote("none"),
-            "use_oauth_services": "scitokens",
             "environment": "BEARER_TOKEN_FILE=$$(CondorScratchDir)/.condor_creds/scitokens.use",
         }
+
+        if self.production.meta.get("source", {}).get("type", "") == "frame":
+            description["use_oauth_services"] = "scitokens"
 
         accounting_group = self.production.meta.get("scheduler", {}).get(
             "accounting group", None
