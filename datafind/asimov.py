@@ -125,10 +125,12 @@ class Pipeline(asimov.pipeline.Pipeline):
                 )
             except configparser.NoOptionError:
                 schedulers = htcondor.Collector().locate(htcondor.DaemonTypes.Schedd)
+
             schedd = htcondor.Schedd(schedulers)
-            with schedd.transaction() as txn:
-                cluster_id = job.queue(txn)
-                self.logger.info("Submitted to htcondor job queue.")
+            
+            result = schedd.submit(job)
+            cluster_id = result.cluster()
+            self.logger.info(f"Submitted {cluster_id} to htcondor job queue.")
 
         self.production.job_id = int(cluster_id)
         self.clusterid = cluster_id
