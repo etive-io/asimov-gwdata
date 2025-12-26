@@ -62,6 +62,12 @@ Run tests:
 python3 -m unittest discover -s tests -p "test_*.py" -v
 ```
 
+Or use the convenient test runner script:
+```bash
+chmod +x run_tests.sh  # Make executable (first time only)
+./run_tests.sh
+```
+
 For detailed testing documentation, see [docs/testing.md](docs/testing.md).
 
 For CI/CD integration examples, see [docs/ci-testing-examples.md](docs/ci-testing-examples.md).

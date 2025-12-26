@@ -18,19 +18,31 @@ def create_mock_frame_file(output_path, gps_start=1126259460, duration=4096):
     """
     Create a minimal mock GWF frame file for testing.
     
+    Note: Currently this function copies an existing test frame file
+    or creates an empty placeholder. The gps_start and duration parameters
+    are reserved for future enhancement when we can create proper frame
+    files with specific GPS times using gwpy.
+    
     Parameters
     ----------
     output_path : str
         Path where the mock frame file should be created.
     gps_start : int, optional
         GPS start time for the frame. Default is 1126259460 (around GW150914).
+        Currently not used, reserved for future implementation.
     duration : int, optional
         Duration of the frame in seconds. Default is 4096.
+        Currently not used, reserved for future implementation.
         
     Returns
     -------
     str
         Path to the created frame file.
+        
+    Todo
+    ----
+    - Implement proper frame file creation with specified GPS time and duration
+    - Use gwpy to create frames with known data for testing
     """
     # For now, just copy the existing test frame if it exists
     # In a real implementation, you might use gwpy to create a proper frame
@@ -81,16 +93,22 @@ class MockGWDataFind:
         return []
     
     @contextmanager
-    def patch_find_urls(self):
+    def patch_find_urls(self, import_path='gwdatafind.find_urls'):
         """
         Context manager to patch gwdatafind.find_urls with the mock.
+        
+        Parameters
+        ----------
+        import_path : str, optional
+            The import path to patch. Default is 'gwdatafind.find_urls'.
+            Use 'datafind.frames.find_urls' if patching where it's imported.
         
         Yields
         ------
         MockGWDataFind
             This mock instance.
         """
-        with patch('gwdatafind.find_urls', side_effect=self.mock_find_urls):
+        with patch(import_path, side_effect=self.mock_find_urls):
             yield self
 
 

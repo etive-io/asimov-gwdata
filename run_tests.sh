@@ -2,6 +2,9 @@
 # run_tests.sh - Script to run asimov-gwdata tests
 #
 # This script demonstrates different ways to run the test suite.
+#
+# Make this script executable with: chmod +x run_tests.sh
+# Then run it with: ./run_tests.sh
 
 set -e  # Exit on error
 

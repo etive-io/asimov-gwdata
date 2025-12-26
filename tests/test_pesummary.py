@@ -28,15 +28,23 @@ def setUpModule():
     Set up the test module by downloading test data if needed.
     
     This function runs once before all tests in this module.
-    If the test data file doesn't exist and network is available,
-    it will be downloaded from Zenodo.
+    
+    Downloads the GW150914 PESummary metafile (~12MB) from Zenodo if it's
+    not already present and network access is available. The file is used
+    for testing PSD and calibration extraction functionality.
+    
+    If the download fails (e.g., no network access), tests requiring this
+    file will be skipped gracefully with an informative message.
+    
+    The downloaded file is cached locally and won't be re-downloaded on
+    subsequent test runs unless deleted.
     """
     if not os.path.exists(TEST_DATA_FILE):
         # Only try to download if we have network access
         # In CI/CD without network, these tests will be skipped
         try:
             print(f"\nDownloading test data file to {TEST_DATA_FILE}...")
-            print("(This is a one-time download of ~12MB)")
+            print("(This is a one-time download of ~12MB from Zenodo)")
             urllib.request.urlretrieve(
                 "https://zenodo.org/records/6513631/files/IGWN-GWTC2p1-v2-GW150914_095045_PEDataRelease_mixed_cosmo.h5?download=1",
                 TEST_DATA_FILE
