@@ -22,7 +22,7 @@ Strain Data (Frames)
 
 * Access to proprietary LIGO/Virgo/KAGRA data
 * OSDF/Pelican protocol support
-* Authentication via IGWN tokens
+* Authentication via scitokens
 * Datafind server integration
 
 See: :doc:`frames` for detailed documentation.
@@ -196,7 +196,7 @@ Error Handling
 Authentication
 ~~~~~~~~~~~~~~
 
-* IGWN token support
+* SciTokens support
 * SciTokens integration
 * Automatic credential handling
 * Secure data access
@@ -379,23 +379,7 @@ Getting Help
 * 🐛 Report issues on GitHub
 * 💬 Ask questions in discussions
 
-Summary
--------
+----
 
-``asimov-gwdata`` is a comprehensive tool for gravitational wave data retrieval that:
-
-✅ Supports multiple data types (frames, calibration, posteriors, PSDs)
-
-✅ Integrates with asimov workflow system
-
-✅ Works standalone via command-line
-
-✅ Handles authentication automatically
-
-✅ Supports all major observing runs
-
-✅ Provides flexible configuration
-
-✅ Organizes output systematically
-
-✅ Enables reproducible science
+.. note::
+   This documentation was automatically generated with GitHub Copilot to provide comprehensive coverage of all package functionality.

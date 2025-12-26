@@ -10,7 +10,7 @@ Basic Workflow
 
 The typical workflow for using ``asimov-gwdata`` involves:
 
-1. Creating a YAML configuration file specifying what data to download
+1. Creating a YAML blueprint or configuration file specifying what data to download
 2. Running the ``gwdata`` command with your configuration
 3. Accessing the downloaded data in the output directories
 
@@ -19,8 +19,8 @@ Example: GW150914 Analysis
 
 This example shows how to retrieve all necessary data for analyzing GW150914, the first gravitational wave detection.
 
-Step 1: Create Configuration File
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Step 1: Create Blueprint
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Create a file named ``gw150914_config.yaml``:
 
@@ -67,7 +67,7 @@ If you have a PESummary metafile from a previous analysis, you can extract the p
      - posterior
    source:
      type: pesummary
-     location: /home/pe/O3/GW150914/posterior_samples.h5
+     location: /home/pe/O3/GW190814/posterior_samples.h5
      analysis: C01:IMRPhenomXPHM
 
 This will copy the metafile to ``posterior/metafile.h5``.
@@ -83,7 +83,7 @@ To extract power spectral density (PSD) files from a metafile:
      - psds
    source:
      type: pesummary
-     location: /home/pe/O3/GW150914/posterior_samples.h5
+     location: /home/pe/O3/GW190814/posterior_samples.h5
      analysis: C01:IMRPhenomXPHM
 
 PSD files will be saved in the ``psds/`` directory as both text (``*.dat``) and XML (``*.xml.gz``) formats.
@@ -99,7 +99,7 @@ Calibration uncertainty envelopes can also be extracted from PESummary metafiles
      - calibration
    source:
      type: pesummary
-     location: /home/pe/O3/GW150914/posterior_samples.h5
+     location: /home/pe/O3/GW190814/posterior_samples.h5
      analysis: C01:IMRPhenomXPHM
 
 Advanced Calibration Retrieval

@@ -311,6 +311,8 @@ Complete Configuration Examples
 Minimal Configuration
 ~~~~~~~~~~~~~~~~~~~~~
 
+This minimal example extracts posterior samples from a PESummary metafile.
+
 .. code-block:: yaml
 
    data:
@@ -322,6 +324,9 @@ Minimal Configuration
 
 Full Configuration
 ~~~~~~~~~~~~~~~~~~
+
+This comprehensive example downloads all available data types (frames, calibration, posteriors, and PSDs) 
+from both GWOSC and PESummary sources, with per-detector calibration versions and custom Virgo settings.
 
 .. code-block:: yaml
 
@@ -353,6 +358,8 @@ Full Configuration
 
 Asimov Blueprint Example
 ~~~~~~~~~~~~~~~~~~~~~~~~~
+
+This example shows how to configure gwdata as an asimov pipeline with automatic event substitution.
 
 .. code-block:: yaml
 
