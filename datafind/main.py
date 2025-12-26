@@ -70,7 +70,7 @@ def get_data(settings):  # detectors, start, end, duration, frames):
         settings["data"].remove("frames")
 
     if "calibration" in settings["data"]:
-        source = settings.get("source")
+        source = settings.get("source", {})
         type = source.get("type", None)
         if type == "pesummary":
             # Allow calibration uncertainty envelopes to be extracted from a PESummary metafile.
@@ -81,6 +81,12 @@ def get_data(settings):  # detectors, start, end, duration, frames):
                 for ifo, cal in metafile.calibration(analysis).items():
                     cal.to_file(os.path.join("calibration", f"{ifo}.dat"))
 
+        elif type == "public":
+            # Download calibration from public DCC pages
+            calibration.find_calibrations_on_cit(
+                settings["time"]["start"],
+                public=True
+            )
         elif (type == "local storage") or (type is None):
             # This is the default behaviour for versions prior to 0.6.0
             # NB that for Virgo calibration after O4b you must instead

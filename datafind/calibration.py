@@ -17,6 +17,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from .frames import Frame, get_data_frames_private
+from .utils import download_file
 
 
 logger = logging.getLogger("gwdata")
@@ -314,13 +315,146 @@ def get_o4_style_calibration(dir, time, version="v1"):
     return data
 
 
+def get_calibration_from_dcc(time, run=None):
+    """
+    Download calibration uncertainty envelopes from public DCC pages.
+
+    Parameters
+    ----------
+    time : number
+       The GPS time for which the nearest calibration should be returned.
+    run : str, optional
+       The observing run (e.g., 'O4a', 'O3a'). If not provided, it will be
+       inferred from the GPS time.
+
+    Returns
+    -------
+    data : dict
+       Dictionary mapping detector names to local file paths of downloaded
+       calibration files.
+
+    Notes
+    -----
+    This function downloads calibration uncertainty envelopes from publicly
+    accessible LIGO DCC pages:
+    - O4a: https://dcc.ligo.org/LIGO-T2500288/public
+    - O1-O3: https://dcc.ligo.org/LIGO-T2100313/public
+    
+    Currently only supports LIGO detectors (H1, L1).
+    """
+    observing_runs = {
+        "O1":   [1126623617, 1136649617],
+        "O2":   [1164556817, 1187733618],
+        "O3a":  [1238166018, 1253977218],
+        "O3b":  [1256655618, 1269363618],
+        "ER15": [1366556418, 1368975618],
+        "O4a":  [1368975618, 1389456018],
+        "ER16": [1394982018, 1396792818],
+        "O4b":  [1396792818, 1422118818],
+        "O4c":  [1422118818, 1443884418],
+    }
+
+    dcc_documents = {
+        "O1": "T2100313",
+        "O2": "T2100313",
+        "O3a": "T2100313",
+        "O3b": "T2100313",
+        "ER15": "T2500288",
+        "O4a": "T2500288",
+        "ER16": "T2500288",
+        "O4b": "T2500288",
+        "O4c": "T2500288",
+    }
+
+    def identify_run_from_gpstime(time):
+        for run_name, (start, end) in observing_runs.items():
+            if start < time < end:
+                return run_name
+        return None
+
+    if run is None:
+        run = identify_run_from_gpstime(time)
+    
+    if run is None:
+        logger.warning("The requested time is not inside a recognised observing run. No calibration envelopes will be returned.")
+        return {}
+    
+    if run not in dcc_documents:
+        logger.error(f"No public DCC document found for observing run {run}")
+        return {}
+    
+    dcc_doc = dcc_documents[run]
+    logger.info(f"Downloading public calibration envelopes from DCC document {dcc_doc} for {run}")
+    
+    # Construct DCC URLs for the calibration files
+    # The exact URL structure depends on the DCC document organization
+    # Typical structure: https://dcc.ligo.org/public/XXXX/TXXXXXX/VVV/filename.txt
+    # where XXXX is derived from the doc number, VVV is version
+    
+    dcc_base_template = "https://dcc.ligo.org/public/{subdir}/LIGO-{doc}/{version}/{ifo}_CalibrationUncertainty.txt"
+    
+    # Extract subdirectory from document number (e.g., T2500288 -> 0250)
+    doc_number = dcc_doc[1:]  # Remove 'T' prefix
+    subdir = doc_number[:4]  # First 4 digits
+    
+    data = {}
+    os.makedirs("calibration", exist_ok=True)
+    
+    for ifo in ["H1", "L1"]:
+        # Try different possible URL patterns and versions
+        # Common patterns include:
+        # - Direct file in public folder
+        # - Version subdirectories (001, 002, etc.)
+        possible_urls = []
+        
+        # Pattern 1: Latest version with standard naming
+        url = f"https://dcc.ligo.org/public/{subdir}/LIGO-{dcc_doc}/001/{ifo}_CalibrationUncertainty.txt"
+        possible_urls.append(url)
+        
+        # Pattern 2: Alternative naming conventions
+        url = f"https://dcc.ligo.org/public/{subdir}/LIGO-{dcc_doc}/001/calibration_uncertainty_{ifo}.txt"
+        possible_urls.append(url)
+        
+        # Pattern 3: Direct public folder
+        url = f"https://dcc.ligo.org/LIGO-{dcc_doc}/public/{ifo}_CalibrationUncertainty.txt"
+        possible_urls.append(url)
+        
+        downloaded = False
+        for url in possible_urls:
+            try:
+                logger.debug(f"Trying to download from {url}")
+                filename = download_file(url, directory="calibration", name=f"{ifo}.txt")
+                data[ifo] = os.path.join("calibration", filename)
+                logger.info(f"Successfully downloaded {ifo} calibration from {url}")
+                downloaded = True
+                break
+            except Exception as e:
+                logger.debug(f"Failed to download from {url}: {e}")
+                continue
+        
+        if not downloaded:
+            logger.warning(f"Could not download calibration file for {ifo} from any known URL pattern")
+    
+    if len(data) == 0:
+        logger.error(f"No calibration uncertainty envelopes could be downloaded from public DCC.")
+    else:
+        click.echo("Public calibration uncertainty envelopes downloaded")
+        click.echo("--------------------------------------------------")
+        for det, filepath in data.items():
+            click.echo(click.style(f"{det}: ", bold=True), nl=False)
+            click.echo(f"{filepath}")
+    
+    return data
+
+
 def find_calibrations_on_cit(time,
                       base_dir=None,
                       version=None,
                       datafind_host="datafind.igwn.org",
                       virgo_prefix="V1:Hrec_hoft_U00",
                       timestamp_channel=None,
-                      frametype="V1:HoftAR1"
+                      frametype="V1:HoftAR1",
+                      public=False
                       ):
     """
     Find the calibration file for a given time.
@@ -346,7 +480,14 @@ def find_calibrations_on_cit(time,
     frametype : str
        The frametype to use for extracting uncertainty envelopes.
        Defaults to ``V1:HoftAR1``.
+    public : bool
+       If True, download calibration envelopes from public DCC pages instead of
+       accessing private filesystem locations. Defaults to False.
     """
+    
+    # If public access is requested, use the DCC download function
+    if public:
+        return get_calibration_from_dcc(time)
 
     observing_runs = {
         "O1":   [1126623617, 1136649617],
