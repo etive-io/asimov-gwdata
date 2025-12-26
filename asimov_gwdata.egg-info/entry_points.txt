@@ -1,0 +1,5 @@
+[asimov.pipelines]
+gwdata = datafind.asimov:Pipeline
+
+[console_scripts]
+gwdata = datafind.main:get_data

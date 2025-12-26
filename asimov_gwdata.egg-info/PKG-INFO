@@ -1,0 +1,70 @@
+Metadata-Version: 2.4
+Name: asimov-gwdata
+Version: 0.7.0.dev1+g7b55e804b
+Summary: An asimov plugin to make downloading gravitational wave data easier
+Author-email: Daniel Williams <daniel.williams@ligo.org>
+License: MIT
+Project-URL: Source code, https://git.ligo.org/asimov/asimov-gwdatahelp
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.7
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: gwosc
+Requires-Dist: asimov>=0.4.0
+Requires-Dist: pesummary
+Requires-Dist: numpy
+Requires-Dist: requests
+Requires-Dist: click
+Requires-Dist: igwn-auth-utils
+Requires-Dist: requests-pelican
+Requires-Dist: requests-scitokens>=0.1.0
+Provides-Extra: docs
+Requires-Dist: sphinx; extra == "docs"
+Requires-Dist: kentigern; extra == "docs"
+Provides-Extra: rift
+Requires-Dist: rift; extra == "rift"
+Dynamic: license-file
+
+# Asimov GWData
+
+This package provides an asimov pipeline for collecting published gravitational wave data for use in parameter estimation studies.
+
+## Usage
+
+## Fetching posteriors
+
+To download a posterior file from a known location you'll need to write a YAML configuration file, for example,
+
+```yaml
+data: 
+  - posterior
+source:
+  type: pesummary
+  location: /home/daniel/GW150914/test.h5
+  analysis: C01:IMRPhenomXPHM
+```
+
+and then run
+
+`$ gwdata --settings test.yaml`
+where `test.yaml` is the configuration file above.
+
+## Usage with asimov
+
+The script can also be called as a pipeline in asimov.
+To do this you'll need to apply a blueprint to the project, for example:
+
+```yaml
+kind: analysis
+name: get-data
+pipeline: gwdata
+download:
+  - posterior
+event: GW150914
+source:
+  type: pesummary
+  location: /home/daniel/<event>/test.h5
+  analysis: C01:IMRPhenomXPHM
+```
