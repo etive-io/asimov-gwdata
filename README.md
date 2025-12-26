@@ -2,6 +2,10 @@
 
 This package provides an asimov pipeline for collecting published gravitational wave data for use in parameter estimation studies.
 
+## Documentation
+
+📚 **[Read the full documentation](https://etive-io.github.io/asimov-gwdata/)** for comprehensive guides, API reference, and examples.
+
 ## Usage
 
 ## Fetching posteriors
