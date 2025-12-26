@@ -77,7 +77,7 @@ Example configuration for extracting PSDs from a PESummary metafile:
 Downloading Calibration
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-Example configuration for downloading calibration uncertainty envelopes:
+Example configuration for downloading calibration uncertainty envelopes from local storage:
 
 .. code-block:: yaml
 
@@ -94,6 +94,22 @@ Example configuration for downloading calibration uncertainty envelopes:
    locations:
      calibration directory: /home/cal/archive/
    calibration version: v1
+
+Example configuration for downloading public calibration uncertainty envelopes from DCC:
+
+.. code-block:: yaml
+
+   interferometers:
+     - H1
+     - L1
+   time:
+     start: 1370000000
+     end: 1370000032
+     duration: 32
+   data:
+     - calibration
+   source:
+     type: public
 
 Combined Download
 ~~~~~~~~~~~~~~~~~

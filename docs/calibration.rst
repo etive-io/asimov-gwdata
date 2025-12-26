@@ -8,6 +8,7 @@ For LIGO strain data from O1, O2, O3, and O4, and Virgo data from O2 and O3 cali
 These can be retrieved directly from a file system by asimov-gwdata.
 
 Calibration uncertainty envelopes are proprietary data available to members of the LIGO, Virgo, and KAGRA collaborations.
+However, public versions of LIGO calibration uncertainty envelopes are available from the LIGO Document Control Center (DCC) for O1-O4.
 
 These can be accessed by setting ``calibration`` as an argument in the ``download`` section of the blueprint.
 
@@ -29,6 +30,39 @@ Additionally you can set the following variables:
 		locations:
 		  calibration directory: /home/cal/archive/
 		calibration version: v1
+
+
+Public Calibration Uncertainty Envelopes from DCC
+-------------------------------------------------
+
+Public calibration uncertainty envelopes for LIGO detectors (H1 and L1) are available from the LIGO Document Control Center (DCC).
+These can be accessed without requiring authentication or access to LIGO computing resources.
+
+The public calibration envelopes are available from:
+
+* **O4a**: `LIGO-T2500288 <https://dcc.ligo.org/LIGO-T2500288/public>`_
+* **O1-O3**: `LIGO-T2100313 <https://dcc.ligo.org/LIGO-T2100313/public>`_
+
+To download public calibration envelopes from the DCC, specify ``type: public`` in the source section:
+
+.. code-block:: yaml
+
+		kind: analysis
+		name: get-data
+		pipeline: gwdata
+		source:
+		  type: public
+		download:
+		  - calibration
+
+This will automatically:
+
+1. Identify the observing run from the GPS time
+2. Download the appropriate calibration files from the DCC
+3. Save them in the ``calibration/`` directory in the standard format
+
+**Note:** Public DCC calibration envelopes are currently only available for LIGO detectors (H1 and L1).
+For Virgo calibration envelopes, use frame files or local storage options.
 
 
 Calibration Uncertainty Envelopes in Frame files
