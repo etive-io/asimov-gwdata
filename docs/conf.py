@@ -68,7 +68,7 @@ napoleon_type_aliases = None
 intersphinx_mapping = {
     'python': ('https://docs.python.org/3', None),
     'numpy': ('https://numpy.org/doc/stable/', None),
-    'asimov': ('https://asimov.docs.ligo.org/asimov/', None),
+    'asimov': ('https://asimov.docs.ligo.org/', None),
 }
 
 templates_path = ['_templates']

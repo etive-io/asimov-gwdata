@@ -54,17 +54,17 @@ jobs:
           sphinx-multiversion . _build/html
           # Create index.html redirect to latest stable version or main
           cat > _build/html/index.html <<EOF
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta http-equiv="refresh" content="0; url=main/index.html" />
-          <title>Redirecting...</title>
-        </head>
-        <body>
-          <p>Redirecting to <a href="main/index.html">documentation</a>...</p>
-        </body>
-        </html>
-        EOF
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="refresh" content="0; url=main/index.html" />
+  <title>Redirecting...</title>
+</head>
+<body>
+  <p>Redirecting to <a href="main/index.html">documentation</a>...</p>
+</body>
+</html>
+EOF
         fi
     
     - name: Upload artifact

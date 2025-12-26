@@ -35,7 +35,7 @@ interferometers
 :Type: List of strings
 :Required: For frames and some calibration sources
 :Description: List of detector names to download data for
-:Valid values: ``H1``, ``L1``, ``V1``
+:Valid values: ``H1``, ``L1``, ``V1``, ``K1`` (Note: K1/KAGRA calibration support is pending)
 :Example:
 
 .. code-block:: yaml
