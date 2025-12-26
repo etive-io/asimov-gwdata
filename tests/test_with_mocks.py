@@ -6,7 +6,7 @@ functionality without requiring access to external resources.
 """
 import unittest
 import os
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 from tests.test_fixtures import (
     MockGWDataFind,

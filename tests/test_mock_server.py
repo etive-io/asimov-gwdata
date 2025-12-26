@@ -3,6 +3,7 @@ Tests for the mock gwdatafind server.
 """
 import unittest
 import time
+import requests
 from tests.mock_gwdatafind_server import MockGWDataFindServer
 
 
@@ -31,7 +32,6 @@ class TestMockGWDataFindServer(unittest.TestCase):
         
         with MockGWDataFindServer(port=8768, frame_configs=frame_configs) as server:
             # Make a request to the server
-            import requests
             response = requests.get(
                 f'http://localhost:8768/api/v1/gwf/H/H1_HOFT_C02/1126259460,1126259464/file.json',
                 timeout=2

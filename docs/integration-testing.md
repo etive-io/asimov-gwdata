@@ -183,14 +183,14 @@ jobs:
       - name: Set up mock frame files
         run: |
           # Create test frame directory structure
-          mkdir -p /tmp/test-frames/H1/H1_GWOSC_16KHZ_R1
-          mkdir -p /tmp/test-frames/L1/L1_GWOSC_16KHZ_R1
+          mkdir -p /tmp/test-frames/H1/H1_LOSC_16_V1
+          mkdir -p /tmp/test-frames/L1/L1_LOSC_16_V1
           
           # Create minimal mock frame files
           python3 << EOF
           from tests.test_fixtures import create_mock_frame_file
-          create_mock_frame_file('/tmp/test-frames/H1/H1_GWOSC_16KHZ_R1/H-H1_GWOSC_16KHZ_R1-1126256640-4096.gwf')
-          create_mock_frame_file('/tmp/test-frames/L1/L1_GWOSC_16KHZ_R1/L-L1_GWOSC_16KHZ_R1-1126256640-4096.gwf')
+          create_mock_frame_file('/tmp/test-frames/H1/H1_LOSC_16_V1/H-H1_LOSC_16_V1-1126256640-4096.gwf')
+          create_mock_frame_file('/tmp/test-frames/L1/L1_LOSC_16_V1/L-L1_LOSC_16_V1-1126256640-4096.gwf')
           EOF
       
       - name: Start mock gwdatafind server
@@ -201,8 +201,8 @@ jobs:
           import time
           
           frame_configs = {
-              ('H', 'H1_LOSC_16_V1'): ['file:///tmp/test-frames/H1/H1_GWOSC_16KHZ_R1/H-H1_GWOSC_16KHZ_R1-1126256640-4096.gwf'],
-              ('L', 'L1_LOSC_16_V1'): ['file:///tmp/test-frames/L1/L1_GWOSC_16KHZ_R1/L-L1_GWOSC_16KHZ_R1-1126256640-4096.gwf']
+              ('H', 'H1_LOSC_16_V1'): ['file:///tmp/test-frames/H1/H1_LOSC_16_V1/H-H1_LOSC_16_V1-1126256640-4096.gwf'],
+              ('L', 'L1_LOSC_16_V1'): ['file:///tmp/test-frames/L1/L1_LOSC_16_V1/L-L1_LOSC_16_V1-1126256640-4096.gwf']
           }
           
           server = MockGWDataFindServer(port=8765, frame_configs=frame_configs)

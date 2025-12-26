@@ -12,8 +12,6 @@ from unittest.mock import Mock, patch
 import igwn_auth_utils
 
 from tests.test_fixtures import (
-    MockGWDataFind,
-    MockGWOSC,
     get_test_data_path,
     temporary_test_directory
 )

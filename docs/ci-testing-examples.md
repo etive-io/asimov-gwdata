@@ -163,12 +163,24 @@ test:with-asimov-gwdata:
     # Install asimov-gwdata with test fixtures
     - pip install -e git+https://github.com/etive-io/asimov-gwdata.git#egg=asimov-gwdata[test]
     
-    # Set up mock data
+    # Set up mock data and start mock server
     - mkdir -p /tmp/test-frames/H1/H1_HOFT_C02
     - python3 -c "from tests.test_fixtures import create_mock_frame_file; create_mock_frame_file('/tmp/test-frames/H1/H1_HOFT_C02/H-H1_HOFT_C02-1126256640-4096.gwf')"
     
-    # Configure to use local frames
-    - export GWDATAFIND_SERVER=file:///tmp/test-frames
+    # Start mock gwdatafind server in background
+    - |
+      python3 << 'EOF' &
+      from tests.mock_gwdatafind_server import MockGWDataFindServer
+      frame_configs = {('H', 'H1_HOFT_C02'): ['file:///tmp/test-frames/H1/H1_HOFT_C02/H-H1_HOFT_C02-1126256640-4096.gwf']}
+      server = MockGWDataFindServer(port=8765, frame_configs=frame_configs)
+      server.start()
+      import time
+      while True: time.sleep(1)
+      EOF
+      sleep 2
+    
+    # Configure to use mock server
+    - export GWDATAFIND_SERVER=http://localhost:8765
     
     # Run your project's tests (e.g., asimov)
     - python3 -m unittest discover

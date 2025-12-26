@@ -5,9 +5,8 @@ This module provides a simple HTTP server that implements the gwdatafind API
 for testing purposes, without requiring the full gwdatafind-server package.
 """
 import json
-import os
 from http.server import HTTPServer, BaseHTTPRequestHandler
-from urllib.parse import urlparse, parse_qs
+from urllib.parse import urlparse
 import threading
 import time
 
@@ -36,7 +35,6 @@ class MockGWDataFindHandler(BaseHTTPRequestHandler):
         if len(path_parts) >= 6 and path_parts[0] == 'api' and path_parts[2] == 'gwf':
             site = path_parts[3]
             frametype = path_parts[4]
-            gps_range = path_parts[5]
             
             # Get frame URLs for this site/frametype combination
             key = (site, frametype)
