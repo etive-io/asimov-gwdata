@@ -72,6 +72,10 @@ For detailed testing documentation, see [docs/testing.md](docs/testing.md).
 
 For CI/CD integration examples, see [docs/ci-testing-examples.md](docs/ci-testing-examples.md).
 
+**Using asimov-gwdata test fixtures in other projects (e.g., asimov):**
+See [docs/integration-testing.md](docs/integration-testing.md) for detailed guidance on how to
+use asimov-gwdata's mock fixtures when testing projects that call asimov-gwdata.
+
 ## Development
 
 See [tests/README.md](tests/README.md) for information on writing tests.
