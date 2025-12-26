@@ -92,7 +92,7 @@ html_css_files = [
 smv_tag_whitelist = r'^v\d+\.\d+.*$'  # Include tags like v1.0, v1.0.1, etc.
 smv_branch_whitelist = r'^(main|master)$'  # Include main/master branches
 smv_remote_whitelist = r'^origin$'  # Use origin remote
-smv_released_pattern = r'^refs/tags/.*$'  # Released versions
+smv_released_pattern = r'^refs/tags/v\d+\.\d+.*$'  # Released versions (matches tag whitelist)
 smv_outputdir_format = '{ref.name}'  # Output directory format
 
 html_sidebars = {

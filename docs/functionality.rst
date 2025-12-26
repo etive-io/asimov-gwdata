@@ -25,7 +25,7 @@ Strain Data (Frames)
 * Authentication via IGWN tokens
 * Datafind server integration
 
-See: :ref:`frames` for detailed documentation.
+See: :doc:`frames` for detailed documentation.
 
 Calibration Uncertainty Envelopes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -50,7 +50,7 @@ Calibration Uncertainty Envelopes
 * O3a/O3b: LIGO and Virgo
 * O4a/O4b/O4c: LIGO and Virgo (frame-based)
 
-See: :ref:`calibration` for detailed documentation.
+See: :doc:`calibration` for detailed documentation.
 
 Posterior Samples
 ~~~~~~~~~~~~~~~~~
@@ -69,7 +69,7 @@ Posterior Samples
 * Comparing different waveform models
 * Ensemble studies
 
-See: :ref:`pesummary` for detailed documentation.
+See: :doc:`pesummary` for detailed documentation.
 
 Power Spectral Densities (PSDs)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -88,7 +88,7 @@ Power Spectral Densities (PSDs)
 * Bilby-compatible
 * LALInference-compatible
 
-See: :ref:`pesummary` for detailed documentation.
+See: :doc:`pesummary` for detailed documentation.
 
 Configuration Options
 ---------------------
@@ -315,7 +315,7 @@ Supported Runs
 * **O3b** (2019-2020): Full support
 * **O4a** (2023-2024): Full support
 * **O4b** (2024-2025): Full support
-* **O4c** (2025): Full support
+* **O4c** (2025): Planned support (dates subject to confirmation)
 
 Limitations and Known Issues
 -----------------------------

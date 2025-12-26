@@ -17,7 +17,7 @@ Getting Started
 
 New to asimov-gwdata? Start here:
 
-* :ref:`installation-guide` - Installation instructions
+* :doc:`installation` - Installation instructions
 * :ref:`functionality-overview` - Complete feature overview
 * :ref:`examples` - Usage examples and tutorials
 * :ref:`cli-reference` - Command-line interface reference
