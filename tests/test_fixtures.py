@@ -39,7 +39,7 @@ def create_mock_frame_file(output_path, gps_start=1126259460, duration=4096):
     str
         Path to the created frame file.
         
-    Todo
+    TODO
     ----
     - Implement proper frame file creation with specified GPS time and duration
     - Use gwpy to create frames with known data for testing
