@@ -14,10 +14,13 @@ git clone https://github.com/etive-io/asimov-gwdata
 cd asimov-gwdata
 pip install -e .
 ```
+## Documentation
+
+📚 **[Read the full documentation](https://etive-io.github.io/asimov-gwdata/)** for comprehensive guides, API reference, and examples.
 
 ## Usage
 
-## Fetching posteriors
+### Fetching posteriors
 
 To download a posterior file from a known location you'll need to write a YAML configuration file, for example,
 
@@ -35,7 +38,7 @@ and then run
 `$ gwdata --settings test.yaml`
 where `test.yaml` is the configuration file above.
 
-## Usage with asimov
+### Usage with asimov
 
 The script can also be called as a pipeline in asimov.
 To do this you'll need to apply a blueprint to the project, for example:
