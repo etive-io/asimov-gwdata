@@ -10,16 +10,52 @@ import urllib.request
 from datafind.metafiles import Metafile
 from datafind import calibration
 
+# Path to test data file
+TEST_DATA_FILE = "tests/GW150914.hdf5"
+
+# Note: To run these tests, you need to either:
+# 1. Have the test file already present in tests/GW150914.hdf5, or
+# 2. Allow the test to download it from Zenodo (requires network access)
+#
+# For CI/CD testing without network access, you can:
+# - Pre-download the file and commit it to the repository, or
+# - Use git-lfs for large files, or
+# - Skip these tests when network is unavailable
+
+
+def setUpModule():
+    """
+    Set up the test module by downloading test data if needed.
+    
+    This function runs once before all tests in this module.
+    If the test data file doesn't exist and network is available,
+    it will be downloaded from Zenodo.
+    """
+    if not os.path.exists(TEST_DATA_FILE):
+        # Only try to download if we have network access
+        # In CI/CD without network, these tests will be skipped
+        try:
+            print(f"\nDownloading test data file to {TEST_DATA_FILE}...")
+            print("(This is a one-time download of ~12MB)")
+            urllib.request.urlretrieve(
+                "https://zenodo.org/records/6513631/files/IGWN-GWTC2p1-v2-GW150914_095045_PEDataRelease_mixed_cosmo.h5?download=1",
+                TEST_DATA_FILE
+            )
+            print("Download complete.")
+        except Exception as e:
+            print(f"\nWarning: Could not download test data: {e}")
+            print("Tests requiring this file will be skipped.")
+
+
 class TestPSDExtraction(unittest.TestCase):
 
-    @classmethod
-    def setUpClass(cls):
-        if not os.path.exists("tests/GW150914.hdf5"):
-            urllib.request.urlretrieve("https://zenodo.org/records/6513631/files/IGWN-GWTC2p1-v2-GW150914_095045_PEDataRelease_mixed_cosmo.h5?download=1",
-                                       "tests/GW150914.hdf5")
-
     def setUp(self):
-        self.summaryfile = "tests/GW150914.hdf5"
+        self.summaryfile = TEST_DATA_FILE
+        if not os.path.exists(self.summaryfile):
+            self.skipTest(
+                f"Test data file {self.summaryfile} not available. "
+                "Run tests with network access to download it."
+            )
 
     def test_dump_psd(self):
         with Metafile(self.summaryfile) as metafile:
@@ -43,16 +79,16 @@ class TestPSDExtraction(unittest.TestCase):
         self.assertTrue(os.path.isfile("H1-psd.xml.gz"))
         self.assertTrue(os.path.isfile("L1-psd.xml.gz"))
 
+
 class TestCalibrationExtraction(unittest.TestCase):
 
-    @classmethod
-    def setUpClass(cls):
-        if not os.path.exists("tests/GW150914.hdf5"):
-            urllib.request.urlretrieve("https://zenodo.org/records/6513631/files/IGWN-GWTC2p1-v2-GW150914_095045_PEDataRelease_mixed_cosmo.h5?download=1",
-                                       "tests/GW150914.hdf5")
-
     def setUp(self):
-        self.summaryfile = "tests/GW150914.hdf5"
+        self.summaryfile = TEST_DATA_FILE
+        if not os.path.exists(self.summaryfile):
+            self.skipTest(
+                f"Test data file {self.summaryfile} not available. "
+                "Run tests with network access to download it."
+            )
 
     def test_dump_calibration(self):
         with Metafile(self.summaryfile) as metafile:
