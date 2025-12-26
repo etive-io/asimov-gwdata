@@ -23,6 +23,41 @@ from .utils import download_file
 logger = logging.getLogger("gwdata")
 logger.setLevel(logging.DEBUG)
 
+# Observing run GPS time ranges
+OBSERVING_RUNS = {
+    "O1":   [1126623617, 1136649617],
+    "O2":   [1164556817, 1187733618],
+    "O3a":  [1238166018, 1253977218],
+    "O3b":  [1256655618, 1269363618],
+    "ER15": [1366556418, 1368975618],  # 2023-04-26 15:00 to 2023-05-24 15:00
+    "O4a":  [1368975618, 1389456018],  # 2023-05-24 15:00 to 2024-01-16 16:00
+    "ER16": [1394982018, 1396792818],  # 2024-03-20 15:00 to 2024-04-10 14:00
+    "O4b":  [1396792818, 1422118818],  # 2024-04-10 14:00 to 2025-01-28 17:00
+    "O4c":  [1422118818, 1443884418],  # 2025-01-28 17:00 to 2025-10-07 15:00
+}
+
+
+def identify_run_from_gpstime(time):
+    """
+    Identify the observing run from a GPS time.
+
+    Parameters
+    ----------
+    time : number
+       The GPS time to identify the observing run for.
+
+    Returns
+    -------
+    run : str or None
+       The name of the observing run (e.g., 'O4a', 'O3a'), or None if the time
+       is not within a recognized observing run.
+    """
+    for run, (start, end) in OBSERVING_RUNS.items():
+        if start < time < end:
+            return run
+    return None
+
+
 def copy_file(path, rename, directory):
     os.makedirs(directory, exist_ok=True)
     local_filename = rename
@@ -342,18 +377,6 @@ def get_calibration_from_dcc(time, run=None):
     
     Currently only supports LIGO detectors (H1, L1).
     """
-    observing_runs = {
-        "O1":   [1126623617, 1136649617],
-        "O2":   [1164556817, 1187733618],
-        "O3a":  [1238166018, 1253977218],
-        "O3b":  [1256655618, 1269363618],
-        "ER15": [1366556418, 1368975618],
-        "O4a":  [1368975618, 1389456018],
-        "ER16": [1394982018, 1396792818],
-        "O4b":  [1396792818, 1422118818],
-        "O4c":  [1422118818, 1443884418],
-    }
-
     dcc_documents = {
         "O1": "T2100313",
         "O2": "T2100313",
@@ -365,12 +388,6 @@ def get_calibration_from_dcc(time, run=None):
         "O4b": "T2500288",
         "O4c": "T2500288",
     }
-
-    def identify_run_from_gpstime(time):
-        for run_name, (start, end) in observing_runs.items():
-            if start < time < end:
-                return run_name
-        return None
 
     if run is None:
         run = identify_run_from_gpstime(time)
@@ -488,24 +505,6 @@ def find_calibrations_on_cit(time,
     # If public access is requested, use the DCC download function
     if public:
         return get_calibration_from_dcc(time)
-
-    observing_runs = {
-        "O1":   [1126623617, 1136649617],
-        "O2":   [1164556817, 1187733618],
-        "O3a":  [1238166018, 1253977218],
-        "O3b":  [1256655618, 1269363618],
-        "ER15": [1366556418, 1368975618], #  2023-04-26 15:00 to 2023-05-24 15:00
-        "O4a":  [1368975618, 1389456018], #  2023-05-24 15:00 to 2024-01-16 16:00
-        "ER16": [1394982018, 1396792818], #  2024-03-20 15:00 to 2024-04-10 14:00
-        "O4b":  [1396792818, 1422118818], #  2024-04-10 14:00 to 2025-01-28 17:00
-        "O4c":  [1422118818, 1443884418], #  2025-01-28 17:00 to 2025-10-07 15:00
-    }
-
-    def identify_run_from_gpstime(time):
-        for run, (start, end) in observing_runs.items():
-            if start < time < end:
-                return run
-        return None
 
     run = identify_run_from_gpstime(time)
 

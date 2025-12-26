@@ -18,7 +18,9 @@ from datafind.calibration import    (
     get_calibration_from_frame,
     get_o4_style_calibration,
     get_calibration_from_dcc,
-    find_calibrations_on_cit)
+    find_calibrations_on_cit,
+    identify_run_from_gpstime,
+    OBSERVING_RUNS)
 
 class CalibrationDataTests(unittest.TestCase):
     """
@@ -85,6 +87,24 @@ class TestFrameCalibration(unittest.TestCase):
 
 class TestPublicDCCCalibration(unittest.TestCase):
     """Test the public DCC calibration download functionality."""
+    
+    def test_identify_run_from_gpstime_o4a(self):
+        """Test that the shared function correctly identifies O4a."""
+        test_time = 1370000000  # Mid-O4a
+        run = identify_run_from_gpstime(test_time)
+        self.assertEqual(run, "O4a")
+    
+    def test_identify_run_from_gpstime_o3a(self):
+        """Test that the shared function correctly identifies O3a."""
+        test_time = 1240000000  # Mid-O3a
+        run = identify_run_from_gpstime(test_time)
+        self.assertEqual(run, "O3a")
+    
+    def test_identify_run_from_gpstime_invalid(self):
+        """Test that the shared function returns None for invalid times."""
+        test_time = 1000000000  # Before O1
+        run = identify_run_from_gpstime(test_time)
+        self.assertIsNone(run)
     
     def test_run_identification_o4a(self):
         """Test that O4a times are correctly identified."""
