@@ -13,6 +13,13 @@ from contextlib import contextmanager
 from unittest.mock import MagicMock, patch
 from typing import Dict, List, Optional
 
+# Import the mock gwdatafind server
+try:
+    from tests.mock_gwdatafind_server import MockGWDataFindServer
+except ImportError:
+    # When run as a module
+    from mock_gwdatafind_server import MockGWDataFindServer
+
 
 def create_mock_frame_file(output_path, gps_start=1126259460, duration=4096):
     """

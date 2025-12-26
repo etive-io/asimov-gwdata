@@ -12,16 +12,32 @@ The asimov-gwdata test fixtures provide mock implementations of external service
 
 ## Integration Approaches
 
-### Approach 1: Using Environment Variables
+### Approach 1: Using a Mock gwdatafind Server
 
-The simplest approach is to use environment variables to configure asimov-gwdata to use mock servers or local data.
+The most correct approach is to run a mock gwdatafind HTTP server that implements the gwdatafind API. asimov-gwdata provides `MockGWDataFindServer` for this purpose.
 
-#### Setting up a Mock GWOSC Server
+#### Setting up a Mock gwdatafind Server
 
-Set the `GWDATAFIND_SERVER` environment variable to point to a local mock server:
+```python
+from tests.mock_gwdatafind_server import MockGWDataFindServer
 
-```bash
-export GWDATAFIND_SERVER=http://localhost:8765
+# Configure frame URLs for your test
+frame_configs = {
+    ('H', 'H1_LOSC_16_V1'): [
+        'file:///tmp/test-frames/H1/H1_LOSC_16_V1/H-H1_LOSC_16_V1-1126256640-4096.gwf'
+    ],
+    ('L', 'L1_LOSC_16_V1'): [
+        'file:///tmp/test-frames/L1/L1_LOSC_16_V1/L-L1_LOSC_16_V1-1126256640-4096.gwf'
+    ]
+}
+
+# Start the server
+with MockGWDataFindServer(port=8765, frame_configs=frame_configs) as server:
+    # Set environment variable to use the mock server
+    os.environ['GWDATAFIND_SERVER'] = 'http://localhost:8765'
+    
+    # Now gwdatafind queries will use the mock server
+    # Run your asimov commands here
 ```
 
 #### Example: asimov HTCondor Tests
@@ -29,10 +45,49 @@ export GWDATAFIND_SERVER=http://localhost:8765
 In asimov's `.github/workflows/htcondor-tests.yml`:
 
 ```yaml
+- name: Setup mock gwdatafind server
+  run: |
+    # Install asimov-gwdata with test support
+    pip install -e git+https://github.com/etive-io/asimov-gwdata.git#egg=asimov-gwdata[test]
+    
+    # Create test frame files
+    mkdir -p /tmp/test-frames/H1/H1_LOSC_16_V1
+    mkdir -p /tmp/test-frames/L1/L1_LOSC_16_V1
+    
+    python3 << 'EOF'
+    from tests.test_fixtures import create_mock_frame_file
+    create_mock_frame_file('/tmp/test-frames/H1/H1_LOSC_16_V1/H-H1_LOSC_16_V1-1126256640-4096.gwf')
+    create_mock_frame_file('/tmp/test-frames/L1/L1_LOSC_16_V1/L-L1_LOSC_16_V1-1126256640-4096.gwf')
+    EOF
+    
+    # Start the mock server in the background
+    python3 << 'EOF' &
+    from tests.mock_gwdatafind_server import MockGWDataFindServer
+    
+    frame_configs = {
+        ('H', 'H1_LOSC_16_V1'): ['file:///tmp/test-frames/H1/H1_LOSC_16_V1/H-H1_LOSC_16_V1-1126256640-4096.gwf'],
+        ('L', 'L1_LOSC_16_V1'): ['file:///tmp/test-frames/L1/L1_LOSC_16_V1/L-L1_LOSC_16_V1-1126256640-4096.gwf']
+    }
+    
+    server = MockGWDataFindServer(port=8765, frame_configs=frame_configs)
+    server.start()
+    
+    # Keep the server running
+    import time
+    try:
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        server.stop()
+    EOF
+    
+    # Give the server time to start
+    sleep 2
+
 - name: Add asimov-gwdata job
   env:
-    # Point to a mock server or use file:// URLs
-    GWDATAFIND_SERVER: file:///path/to/test/frames
+    # Point to the mock server
+    GWDATAFIND_SERVER: http://localhost:8765
   uses: ./.github/actions/run-asimov-command
   with:
     script: asimov apply -f "$GITHUB_WORKSPACE/tests/test_blueprints/gwosc_get_data.yaml" -e GW150914_095045
@@ -63,29 +118,7 @@ with patch('gwdatafind.find_urls', side_effect=mock_find_urls):
     )
 ```
 
-### Approach 3: Pre-staged Test Data
-
-Create a directory structure with pre-staged test frame files:
-
-```bash
-# Create test data directory structure
-mkdir -p /tmp/test-frames/H1/H1_HOFT_C02
-mkdir -p /tmp/test-frames/L1/L1_HOFT_C02
-
-# Copy or create mock frame files
-cp tests/test_data/V1.gwf /tmp/test-frames/H1/H1_HOFT_C02/H-H1_HOFT_C02-1126256640-4096.gwf
-cp tests/test_data/V1.gwf /tmp/test-frames/L1/L1_HOFT_C02/L-L1_HOFT_C02-1126256640-4096.gwf
-```
-
-Then configure asimov-gwdata to use local files:
-
-```python
-# In your test setup
-import os
-os.environ['GWDATAFIND_SERVER'] = 'file:///tmp/test-frames'
-```
-
-### Approach 4: Using asimov-gwdata Test Fixtures Directly
+### Approach 3: Using asimov-gwdata Test Fixtures Directly
 
 Install asimov-gwdata with test fixtures in your test environment:
 
@@ -101,23 +134,31 @@ Then in your test code:
 
 ```python
 from tests.test_fixtures import MockGWDataFind, temporary_test_directory
+from tests.mock_gwdatafind_server import MockGWDataFindServer
 import os
 
 # Create a test directory with mock frame files
 with temporary_test_directory() as tmpdir:
-    # Set up environment
-    os.environ['GWDATAFIND_SERVER'] = f'file://{tmpdir}'
-    
     # Create mock frames
     os.makedirs(f'{tmpdir}/H1/H1_HOFT_C02', exist_ok=True)
+    os.makedirs(f'{tmpdir}/L1/L1_HOFT_C02', exist_ok=True)
     
-    # Now run your asimov commands
-    # asimov will use the local frames
+    # Configure and start the mock server
+    frame_configs = {
+        ('H', 'H1_HOFT_C02'): [f'file://{tmpdir}/H1/H1_HOFT_C02/H-H1_HOFT_C02-1126256640-4096.gwf'],
+        ('L', 'L1_HOFT_C02'): [f'file://{tmpdir}/L1/L1_HOFT_C02/L-L1_HOFT_C02-1126256640-4096.gwf']
+    }
+    
+    with MockGWDataFindServer(port=8765, frame_configs=frame_configs) as server:
+        os.environ['GWDATAFIND_SERVER'] = 'http://localhost:8765'
+        
+        # Now run your asimov commands
+        # asimov will use the mock server
 ```
 
 ## Complete Example: Testing asimov with Mock asimov-gwdata
 
-Here's a complete example for asimov's HTCondor tests:
+Here's a complete example for asimov's HTCondor tests using the mock server:
 
 ```yaml
 name: Tests with HTCondor (with Mock GWData)
@@ -148,38 +189,38 @@ jobs:
           # Create minimal mock frame files
           python3 << EOF
           from tests.test_fixtures import create_mock_frame_file
-          import os
-          
-          # Create mock frames for H1 and L1
-          os.makedirs('/tmp/test-frames/H1/H1_GWOSC_16KHZ_R1', exist_ok=True)
-          os.makedirs('/tmp/test-frames/L1/L1_GWOSC_16KHZ_R1', exist_ok=True)
-          
-          create_mock_frame_file(
-              '/tmp/test-frames/H1/H1_GWOSC_16KHZ_R1/H-H1_GWOSC_16KHZ_R1-1126256640-4096.gwf'
-          )
-          create_mock_frame_file(
-              '/tmp/test-frames/L1/L1_GWOSC_16KHZ_R1/L-L1_GWOSC_16KHZ_R1-1126256640-4096.gwf'
-          )
+          create_mock_frame_file('/tmp/test-frames/H1/H1_GWOSC_16KHZ_R1/H-H1_GWOSC_16KHZ_R1-1126256640-4096.gwf')
+          create_mock_frame_file('/tmp/test-frames/L1/L1_GWOSC_16KHZ_R1/L-L1_GWOSC_16KHZ_R1-1126256640-4096.gwf')
           EOF
       
-      - name: Set up patch for gwdatafind
+      - name: Start mock gwdatafind server
         run: |
-          # Create a sitecustomize.py to patch gwdatafind on import
-          cat > /usr/local/lib/python3.10/site-packages/sitecustomize.py << 'EOF'
-          from unittest.mock import patch
+          # Start the server in the background
+          python3 << 'EOF' &
+          from tests.mock_gwdatafind_server import MockGWDataFindServer
+          import time
           
-          def mock_find_urls(site, frametype, gpsstart, gpsend, **kwargs):
-              """Return local test frame files."""
-              import glob
-              pattern = f'/tmp/test-frames/{site}/{frametype}/*.gwf'
-              files = glob.glob(pattern)
-              return [f'file://{f}' for f in files]
+          frame_configs = {
+              ('H', 'H1_LOSC_16_V1'): ['file:///tmp/test-frames/H1/H1_GWOSC_16KHZ_R1/H-H1_GWOSC_16KHZ_R1-1126256640-4096.gwf'],
+              ('L', 'L1_LOSC_16_V1'): ['file:///tmp/test-frames/L1/L1_GWOSC_16KHZ_R1/L-L1_GWOSC_16KHZ_R1-1126256640-4096.gwf']
+          }
           
-          # Apply the patch globally
-          patch('gwdatafind.find_urls', side_effect=mock_find_urls).start()
+          server = MockGWDataFindServer(port=8765, frame_configs=frame_configs)
+          server.start()
+          
+          try:
+              while True:
+                  time.sleep(1)
+          except KeyboardInterrupt:
+              server.stop()
           EOF
+          
+          # Wait for server to start
+          sleep 2
       
       - name: Add asimov-gwdata job
+        env:
+          GWDATAFIND_SERVER: http://localhost:8765
         uses: ./.github/actions/run-asimov-command
         with:
           script: asimov apply -f "$GITHUB_WORKSPACE/tests/test_blueprints/gwosc_get_data.yaml" -e GW150914_095045
@@ -200,27 +241,47 @@ jobs:
 
 ## Testing Without Network Access
 
-For completely offline testing:
+For completely offline testing using the mock server:
 
 ```bash
-# In your CI/CD pipeline
-export GWDATAFIND_SERVER="file:///tmp/test-frames"
-export GWOSC_ENDPOINT="file:///tmp/test-frames"
-
-# Create the test frame structure
-python3 -c "
+# In your CI/CD pipeline or test script
+# 1. Create test frames
+python3 << 'EOF'
 from tests.test_fixtures import create_mock_frame_file
 import os
 
-# Set up frame directories
 for ifo in ['H1', 'L1', 'V1']:
     for frametype in ['HOFT_C02', 'GWOSC_16KHZ_R1']:
         framedir = f'/tmp/test-frames/{ifo}/{ifo}_{frametype}'
         os.makedirs(framedir, exist_ok=True)
         create_mock_frame_file(f'{framedir}/{ifo[0]}-{ifo}_{frametype}-1126256640-4096.gwf')
-"
+EOF
 
-# Now run asimov tests
+# 2. Start the mock server
+python3 << 'EOF' &
+from tests.mock_gwdatafind_server import MockGWDataFindServer
+import time
+
+frame_configs = {
+    ('H', 'H1_HOFT_C02'): ['file:///tmp/test-frames/H1/H1_HOFT_C02/H-H1_HOFT_C02-1126256640-4096.gwf'],
+    ('L', 'L1_HOFT_C02'): ['file:///tmp/test-frames/L1/L1_HOFT_C02/L-L1_HOFT_C02-1126256640-4096.gwf'],
+    # Add more frame types as needed
+}
+
+server = MockGWDataFindServer(port=8765, frame_configs=frame_configs)
+server.start()
+
+try:
+    while True:
+        time.sleep(1)
+except KeyboardInterrupt:
+    server.stop()
+EOF
+
+# 3. Set environment variable
+export GWDATAFIND_SERVER=http://localhost:8765
+
+# 4. Run asimov tests
 asimov manage build submit
 ```
 
@@ -228,14 +289,14 @@ asimov manage build submit
 
 Based on the current asimov HTCondor tests, I recommend:
 
-1. **Pre-stage test frames**: Create a directory with mock frame files before running asimov
-2. **Use environment variables**: Configure `GWDATAFIND_SERVER` to point to the local frames
-3. **Optionally patch**: Use sitecustomize.py or similar to globally patch gwdatafind
+1. **Use MockGWDataFindServer**: Run the mock gwdatafind server as a background service
+2. **Pre-stage test frames**: Create frame files in a known location
+3. **Use environment variables**: Set `GWDATAFIND_SERVER=http://localhost:8765`
 
 ### Example Update to asimov's htcondor-tests.yml
 
 ```yaml
-      - name: Setup test frame files
+      - name: Setup mock gwdatafind infrastructure
         run: |
           # Install asimov-gwdata with test support
           pip install -e git+https://github.com/etive-io/asimov-gwdata.git#egg=asimov-gwdata[test]
@@ -252,11 +313,33 @@ Based on the current asimov HTCondor tests, I recommend:
           # Create L1 frames  
           create_mock_frame_file('/tmp/test-frames/L1/L1_LOSC_16_V1/L-L1_LOSC_16_V1-1126256640-4096.gwf')
           PYTHON
+          
+          # Start mock server in background
+          python3 << 'PYTHON' &
+          from tests.mock_gwdatafind_server import MockGWDataFindServer
+          import time
+          
+          frame_configs = {
+              ('H', 'H1_LOSC_16_V1'): ['file:///tmp/test-frames/H1/H1_LOSC_16_V1/H-H1_LOSC_16_V1-1126256640-4096.gwf'],
+              ('L', 'L1_LOSC_16_V1'): ['file:///tmp/test-frames/L1/L1_LOSC_16_V1/L-L1_LOSC_16_V1-1126256640-4096.gwf']
+          }
+          
+          server = MockGWDataFindServer(port=8765, frame_configs=frame_configs)
+          server.start()
+          
+          try:
+              while True:
+                  time.sleep(1)
+          except KeyboardInterrupt:
+              server.stop()
+          PYTHON
+          
+          sleep 2  # Wait for server to start
 
       - name: Add asimov-gwdata job
         env:
-          # Use local frames instead of GWOSC
-          GWDATAFIND_SERVER: file:///tmp/test-frames
+          # Use local mock server instead of GWOSC
+          GWDATAFIND_SERVER: http://localhost:8765
         uses: ./.github/actions/run-asimov-command
         with:
           script: asimov apply -f "$GITHUB_WORKSPACE/tests/test_blueprints/gwosc_get_data.yaml" -e GW150914_095045
@@ -268,24 +351,34 @@ Based on the current asimov HTCondor tests, I recommend:
 
 If asimov-gwdata can't find frames, check:
 
-1. Directory structure matches: `/path/{IFO}/{FRAMETYPE}/{IFO}-{FRAMETYPE}-{GPS}-{DURATION}.gwf`
-2. Environment variable is set correctly
-3. File permissions allow reading
+1. Mock server is running: `curl http://localhost:8765/api/v1/gwf/H/H1_LOSC_16_V1/1126259460,1126259464/file.json`
+2. Frame files exist at the paths configured in `frame_configs`
+3. Environment variable is set correctly: `echo $GWDATAFIND_SERVER`
+4. Server URL includes protocol: `http://localhost:8765` not `localhost:8765`
+
+### Server Not Responding
+
+If the mock server isn't responding:
+
+1. Check if port is available: `netstat -an | grep 8765`
+2. Verify server started successfully
+3. Check for errors in the server startup script
+4. Try a different port if 8765 is in use
 
 ### Mock Not Being Used
 
 If the real servers are still being contacted:
 
-1. Verify patches are applied before import
-2. Check environment variables are exported correctly
-3. Ensure mock server is running (if using server approach)
+1. Verify `GWDATAFIND_SERVER` environment variable is set before running gwdatafind
+2. Check that asimov-gwdata is using the environment variable
+3. Ensure no hardcoded server URLs in configuration
 
 ## Future Enhancements
 
 The asimov-gwdata team is working on:
 
-1. A standalone mock gwdatafind server that can be run as a service
+1. A standalone mock gwdatafind server Docker image
 2. Better integration with asimov's testing framework
-3. Pre-built Docker images with mock data included
+3. Pre-built test data packages
 
-For now, the approaches above provide reliable offline testing capabilities.
+For now, the MockGWDataFindServer provides reliable offline testing capabilities.
