@@ -92,3 +92,14 @@ dmypy.json
 
 # Local development
 *.log
+
+# Test artifacts and downloaded data (not test fixtures)
+/*.hdf5
+/*.dat
+/*.txt
+calibration/
+frames/
+psds/
+posterior/
+cache/
+
