@@ -46,6 +46,8 @@ autodoc_default_options = {
     'exclude-members': '__weakref__'
 }
 
+autodoc_mock_imports = ['htcondor']
+
 autosummary_generate = True
 
 # Napoleon settings for parsing Google/NumPy style docstrings

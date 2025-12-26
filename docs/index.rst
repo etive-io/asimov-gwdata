@@ -47,6 +47,13 @@ New to asimov-gwdata? Start here:
 
    api
 
+.. toctree::
+   :maxdepth: 1
+   :caption: Development
+   :hidden:
+
+   contributing
+
 Features
 --------
 
