@@ -2,6 +2,19 @@
 
 This package provides an asimov pipeline for collecting published gravitational wave data for use in parameter estimation studies.
 
+## Installation
+
+```bash
+pip install asimov-gwdata
+```
+
+For development:
+```bash
+git clone https://github.com/etive-io/asimov-gwdata
+cd asimov-gwdata
+pip install -e .
+```
+
 ## Usage
 
 ## Fetching posteriors
@@ -39,3 +52,20 @@ source:
   location: /home/daniel/<event>/test.h5
   analysis: C01:IMRPhenomXPHM
 ```
+
+## Testing
+
+This package includes a comprehensive test suite that can run without network access using mock fixtures.
+
+Run tests:
+```bash
+python3 -m unittest discover -s tests -p "test_*.py" -v
+```
+
+For detailed testing documentation, see [docs/testing.md](docs/testing.md).
+
+For CI/CD integration examples, see [docs/ci-testing-examples.md](docs/ci-testing-examples.md).
+
+## Development
+
+See [tests/README.md](tests/README.md) for information on writing tests.

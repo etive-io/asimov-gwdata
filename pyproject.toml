@@ -47,6 +47,10 @@ rift = [
      "rift"
 ]
 
+test = [
+	"gwdatafind-server>=1.5.0",
+]
+
 [project.scripts]
 #gwdata = "datafind:main"
 gwdata = "datafind.main:get_data"
