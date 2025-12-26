@@ -18,6 +18,7 @@ Getting Started
 New to asimov-gwdata? Start here:
 
 * :ref:`installation-guide` - Installation instructions
+* :ref:`functionality-overview` - Complete feature overview
 * :ref:`examples` - Usage examples and tutorials
 * :ref:`cli-reference` - Command-line interface reference
 
@@ -30,6 +31,7 @@ New to asimov-gwdata? Start here:
    examples
    cli
    configuration
+   functionality
 
 .. toctree::
    :maxdepth: 2

@@ -43,12 +43,17 @@ jobs:
         pip install -r docs-requirements.txt
         pip install -e .
     
-    - name: Build documentation with sphinx-multiversion
+    - name: Build documentation
       run: |
         cd docs
-        sphinx-multiversion . _build/html
-        # Create index.html redirect to latest stable version or main
-        cat > _build/html/index.html <<EOF
+        # For pull requests, just build the current version
+        if [ "${{ github.event_name }}" == "pull_request" ]; then
+          make html
+        else
+          # For main/master/tags, build all versions with sphinx-multiversion
+          sphinx-multiversion . _build/html
+          # Create index.html redirect to latest stable version or main
+          cat > _build/html/index.html <<EOF
         <!DOCTYPE html>
         <html>
         <head>
@@ -60,6 +65,7 @@ jobs:
         </body>
         </html>
         EOF
+        fi
     
     - name: Upload artifact
       uses: actions/upload-pages-artifact@v3
