@@ -32,9 +32,6 @@ dependencies = [
 	"numpy",
 	"requests",
 	"click",
-	"igwn-auth-utils",
-	"requests-pelican",
-	"requests-scitokens >= 0.1.0",
 ]
 
 [project.optional-dependencies]
@@ -44,7 +41,11 @@ docs = [
 ]
 
 rift = [
-     "rift"
+	"rift"
+]
+
+interactive = [
+	"questionary>=1.10.0",
 ]
 
 [project.scripts]
@@ -56,7 +57,11 @@ gwdata = "datafind.main:get_data"
 [tool.setuptools]
 packages = [
 	"datafind",
+	"datafind.cli",
 ]
 
 [project.entry-points.'asimov.pipelines']
 gwdata = 'datafind.asimov:Pipeline'
+
+[project.entry-points.'asimov.commands']
+gw = 'datafind.cli:gw'
