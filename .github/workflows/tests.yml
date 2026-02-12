@@ -1,0 +1,140 @@
+name: Run Tests
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: Test on Python ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.9', '3.10', '3.11', '3.12']
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e .
+    
+    - name: Run unit tests (without server)
+      run: |
+        python -m unittest discover -s tests -p "test_*.py" -v
+      continue-on-error: false
+    
+    - name: Display test summary
+      if: always()
+      run: |
+        echo "Tests completed on Python ${{ matrix.python-version }}"
+
+  test-with-mock-server:
+    name: Test with MockGWDataFindServer on Python ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.10', '3.11', '3.12']
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e .
+    
+    - name: Create test frame files
+      run: |
+        mkdir -p /tmp/test-frames/H1/H1_LOSC_16_V1
+        mkdir -p /tmp/test-frames/L1/L1_LOSC_16_V1
+        
+        python3 << 'EOF'
+        from tests.test_fixtures import create_mock_frame_file
+        create_mock_frame_file('/tmp/test-frames/H1/H1_LOSC_16_V1/H-H1_LOSC_16_V1-1126256640-4096.gwf')
+        create_mock_frame_file('/tmp/test-frames/L1/L1_LOSC_16_V1/L-L1_LOSC_16_V1-1126256640-4096.gwf')
+        EOF
+    
+    - name: Start MockGWDataFindServer in background
+      run: |
+        python3 << 'EOF' &
+        from tests.mock_gwdatafind_server import MockGWDataFindServer
+        import time
+        
+        frame_configs = {
+            ('H', 'H1_LOSC_16_V1'): ['file:///tmp/test-frames/H1/H1_LOSC_16_V1/H-H1_LOSC_16_V1-1126256640-4096.gwf'],
+            ('L', 'L1_LOSC_16_V1'): ['file:///tmp/test-frames/L1/L1_LOSC_16_V1/L-L1_LOSC_16_V1-1126256640-4096.gwf']
+        }
+        
+        server = MockGWDataFindServer(port=8765, frame_configs=frame_configs)
+        server.start()
+        print("MockGWDataFindServer started on port 8765", flush=True)
+        
+        try:
+            while True:
+                time.sleep(1)
+        except KeyboardInterrupt:
+            server.stop()
+        EOF
+        
+        # Give the server time to start
+        sleep 3
+    
+    - name: Verify server is running
+      run: |
+        curl -f http://localhost:8765/api/v1/gwf/H/H1_LOSC_16_V1/1126259460,1126259464/file.json || echo "Server check failed but continuing..."
+    
+    - name: Run tests with mock server
+      env:
+        GWDATAFIND_SERVER: http://localhost:8765
+      run: |
+        python -m unittest tests.test_mock_server -v
+    
+    - name: Run integration tests with server
+      env:
+        GWDATAFIND_SERVER: http://localhost:8765
+      run: |
+        # Run all tests with the server available
+        python -m unittest discover -s tests -p "test_*.py" -v
+      continue-on-error: true
+    
+    - name: Stop background server
+      if: always()
+      run: |
+        # Kill the background Python process running the server
+        pkill -f "MockGWDataFindServer" || true
+
+  test-summary:
+    name: Test Summary
+    runs-on: ubuntu-latest
+    needs: [test, test-with-mock-server]
+    if: always()
+    
+    steps:
+    - name: Check test results
+      run: |
+        echo "Test workflow completed"
+        echo "Basic tests: ${{ needs.test.result }}"
+        echo "Mock server tests: ${{ needs.test-with-mock-server.result }}"
