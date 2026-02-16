@@ -47,10 +47,10 @@ locations:
 virgo prefix: {{ production.meta['virgo prefix'] }}
 {% endif %}
 {% if production.meta contains 'virgo frametype' %}
-virgo prefix: {{ production.meta['virgo frametype'] }}
+virgo frametype: {{ production.meta['virgo frametype'] }}
 {% endif %}
 {% if production.meta contains 'virgo timestamp channel' %}
-virgo prefix: {{ production.meta['virgo timestamp channel'] }}
+virgo timestamp channel: {{ production.meta['virgo timestamp channel'] }}
 {% endif %}
 
 
