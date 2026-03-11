@@ -7,7 +7,17 @@ import pprint
 import asimov.pipeline
 
 from asimov import config
-import htcondor
+
+import warnings
+try:
+    warnings.filterwarnings("ignore", module="htcondor2")
+    import htcondor2 as htcondor  # NoQA
+    import classad2 as classad  # NoQA
+except ImportError:
+    warnings.filterwarnings("ignore", module="htcondor")
+    import htcondor  # NoQA
+    import classad  # NoQA
+
 from asimov.utils import set_directory
 
 
@@ -76,10 +86,12 @@ class Pipeline(asimov.pipeline.Pipeline):
             "request_memory": self.production.meta.get("scheduler", {}).get("request memory", "1024MB"),
             "batch_name": f"gwdata/{name}",
             "+flock_local": "True",
-            "+DESIRED_Sites": htcondor.classad.quote("none"),
-            "use_oauth_services": "scitokens",
+            "+DESIRED_Sites": classad.quote("none"),
             "environment": "BEARER_TOKEN_FILE=$$(CondorScratchDir)/.condor_creds/scitokens.use",
         }
+
+        if self.production.meta.get("source", {}).get("type", "") == "frame":
+            description["use_oauth_services"] = "scitokens"
 
         accounting_group = self.production.meta.get("scheduler", {}).get(
             "accounting group", None
@@ -113,10 +125,12 @@ class Pipeline(asimov.pipeline.Pipeline):
                 )
             except configparser.NoOptionError:
                 schedulers = htcondor.Collector().locate(htcondor.DaemonTypes.Schedd)
+
             schedd = htcondor.Schedd(schedulers)
-            with schedd.transaction() as txn:
-                cluster_id = job.queue(txn)
-                self.logger.info("Submitted to htcondor job queue.")
+            
+            result = schedd.submit(job)
+            cluster_id = result.cluster()
+            self.logger.info(f"Submitted {cluster_id} to htcondor job queue.")
 
         self.production.job_id = int(cluster_id)
         self.clusterid = cluster_id
