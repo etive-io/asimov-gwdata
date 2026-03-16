@@ -20,6 +20,7 @@ from .metafiles import Metafile
 from . import calibration
 
 from .frames import get_data_frames_gwosc
+from .report import Report
 
 logger = logging.getLogger("gwdata")
 
@@ -60,13 +61,20 @@ def get_data(settings):  # detectors, start, end, duration, frames):
     with open(settings, "r") as file_handle:
         settings = yaml.safe_load(file_handle)
 
+    _report = Report(webdir="report",
+                     settings=settings)
+
     if "frames" in settings["data"]:
-        get_data_frames_gwosc(
+        _, frames = get_data_frames_gwosc(
             settings["interferometers"],
             settings["time"]["start"],
             settings["time"]["end"],
             settings["time"]["duration"],
         )
+
+        _report.frames = frames
+        _report._add_spectrograms()
+
         settings["data"].remove("frames")
 
     if "calibration" in settings["data"]:
