@@ -66,8 +66,7 @@ class TestLIGOFrames(unittest.TestCase):
                 download=True,
             )
 
-            self.assertEqual(files['H1'], 'H-H1_HOFT_C02-1126256640-4096.gwf')
-
+            self.assertEqual(files['H1'], ['H-H1_HOFT_C02-1126256640-4096.gwf'])
         except requests.exceptions.HTTPError:
             self.skipTest("Cannot access gw_data_find.")
 
