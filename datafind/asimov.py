@@ -175,7 +175,9 @@ class Pipeline(asimov.pipeline.Pipeline):
 
             for frame in results_dir:
                 ifo = frame.split("/")[-1].split("_")[0].split("-")[0]+"1"
-                frames[ifo] = frame
+                if ifo not in frames:
+                    frames[ifo] = []
+                frames[ifo].append(frame)
 
             outputs["frames"] = frames
 
