@@ -421,6 +421,18 @@ def find_calibrations_on_cit(time,
 
         logger.debug(f"Found envelopes: {data}")
 
+    elif run in ("ER15", "ER16"):
+        # This looks like an O4 time but during an engineering run
+        logger.info("Retrieving O4 calibration envelopes")
+        logger.warning("This event is during an engineering run.")
+        if base_dir:
+            dir = base_dir
+        else:
+            dir = os.path.join(os.path.sep, "home", "cal", "public_html", "archive")
+        data = get_o4_style_calibration(dir, time, version)
+
+        logger.debug(f"Found envelopes: {data}")        
+
     elif not run:
         # This time is outwith a valid observing run
         data = {}
