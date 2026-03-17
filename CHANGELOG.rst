@@ -8,10 +8,20 @@ Breaking changes
 
 This release is not believed to introduce any backwards-incompatible changes.
 
+Bug fixes
+---------
+
++ Fixed a bug where multiple downloaded frame files were not iterated over correctly when generating cache files.
+
 Merges
 ------
 
-+ `ligo!29 <https://git.ligo.org/asimov/pipelines/gwdata/-/merge_requests/29>`_: Adds the ability to download frames via OSDF. 
++ `ligo!29 <https://git.ligo.org/asimov/pipelines/gwdata/-/merge_requests/29>`_: Adds the ability to download frames via OSDF.
++ `ligo!30 <https://git.ligo.org/asimov/pipelines/gwdata/-/merge_requests/30>`_: Adds HTML reports for data jobs.
++ `ligo!33 <https://git.ligo.org/asimov/pipelines/gwdata/-/merge_requests/33>`_: Refactors frame retrieval to correctly handle multiple downloaded frame files and fixes cache file generation.
++ `ligo!34 <https://git.ligo.org/asimov/pipelines/gwdata/-/merge_requests/34>`_: Fixes the end time for the O4c observing run.
++ `ligo!35 <https://git.ligo.org/asimov/pipelines/gwdata/-/merge_requests/35>`_: Allows calibration data for O4-era engineering run events to be downloaded.
++ `ligo!37 <https://git.ligo.org/asimov/pipelines/gwdata/-/merge_requests/37>`_: Fixes a bug where multiple downloaded frame files were not iterated over correctly when generating cache files.
 
 0.6.3
 =====
