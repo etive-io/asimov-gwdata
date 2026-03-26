@@ -245,12 +245,12 @@ def get_calibration_from_frame(
 
     start = time - 60
     end = time + 60
-    frame = get_data_frames_private([frametype], start, end, download=True, host=host)[1][ifo]
+    frame = get_data_frames_private([frametype], start, end, download=True, host=host)[1][ifo][0]
     frame_o = Frame(os.path.join("frames", frame))
     nearest = frame_o.nearest_calibration(time=start, channel=timestamp_channel)
     logger.info(f"The nearest calibration is at {nearest}")
     if not nearest in frame_o:
-        frame = get_data_frames_private([frametype], nearest-1, nearest+1, download=True, host=host)[1][0]
+        frame = get_data_frames_private([frametype], nearest-1, nearest+1, download=True, host=host)[1][ifo][0]
 
     envelope = CalibrationUncertaintyEnvelope.from_frame(
         frame=os.path.join("frames", frame),
