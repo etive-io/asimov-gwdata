@@ -100,16 +100,20 @@ class TestLIGOFramesWithMocks(unittest.TestCase):
             try:
                 os.chdir(tmpdir)
                 
-                urls = datafind.frames.get_data_frames_gwosc(
+                urls, files = datafind.frames.get_data_frames_gwosc(
                     detectors=['H1', 'L1'],
                     start=1126259460,
                     end=1126259492,
                     duration=32
                 )
-                
-                # Verify URLs were returned
+
+                # Verify URLs and downloaded filenames were returned
                 self.assertIn('H1', urls)
                 self.assertIn('L1', urls)
+                self.assertIn('H1', files)
+                self.assertIn('L1', files)
+                self.assertEqual(files['H1'], ['H-H1_GWOSC-1126259460-32.gwf'])
+                self.assertEqual(files['L1'], ['L-L1_GWOSC-1126259460-32.gwf'])
             finally:
                 os.chdir(original_dir)
 

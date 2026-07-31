@@ -153,4 +153,4 @@ def get_data_frames_gwosc(detectors, start, end, duration):
     logger.info("Frames found")
     for det, url in files.items():
         logger.info((f"{det}: {url[0]}"))
-    return urls
+    return urls, files
