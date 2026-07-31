@@ -92,8 +92,10 @@ def get_data(settings):  # detectors, start, end, duration, frames):
         settings["data"].remove("frames")
 
     if "calibration" in settings["data"]:
-        source = settings.get("source")
+        source = settings.get("source", {})
         type = source.get("type", None)
+        requested_ifos = settings.get("interferometers", [])
+
         if type == "pesummary":
             # Allow calibration uncertainty envelopes to be extracted from a PESummary metafile.
             summaryfile = settings["source"]["location"]
@@ -103,25 +105,20 @@ def get_data(settings):  # detectors, start, end, duration, frames):
                 for ifo, cal in metafile.calibration(analysis).items():
                     cal.to_file(os.path.join("calibration", f"{ifo}.dat"))
 
-        elif (type == "local storage") or (type is None):
-            # This is the default behaviour for versions prior to 0.6.0
-            # NB that for Virgo calibration after O4b you must instead
-            # create a separate analysis using the frame type to download
-            # Virgo calibration uncertainty.
-            directory = settings.get("locations", {}).get("calibration directory", None)
-            calibration.find_calibrations_on_cit(
-                settings["time"]["start"],
-                directory,
-                version=settings.get("calibration version", "v1"),
-            )
         elif type == "frame":
-            # retrieve the calibration data from a frame file.
-            for ifo in settings.get("interferometers", ['V1']):
-            # Default to only Virgo since this is the only IFO
-            # distributing calibration this way at present.
+            # Legacy behaviour: retrieve calibration for a single IFO from a
+            # frame file only. This is kept for backwards compatibility with
+            # blueprints which use a dedicated analysis just for frame-based
+            # (Virgo) calibration. New blueprints do not need to set this
+            # explicitly: Virgo calibration is retrieved automatically below,
+            # alongside H1/L1, whenever "V1" is listed in `interferometers`.
+            for ifo in requested_ifos or ["V1"]:
+                # Default to only Virgo since this is the only IFO
+                # distributing calibration this way at present.
                 if ifo != "V1":
                     logger.error("Only V1 calibration can be retrieved from frame files.")
-                
+                    continue
+
                 calibration.get_calibration_from_frame(
                     ifo=ifo,
                     prefix=settings.get("virgo prefix", "V1:Hrec_hoft_U00"),
@@ -131,6 +128,42 @@ def get_data(settings):  # detectors, start, end, duration, frames):
                     host=settings.get("locations", {})\
                     .get("datafind server", "datafind.igwn.org")
                 )
+
+        elif (type == "local storage") or (type is None):
+            # Default behaviour: fetch calibration for whichever
+            # interferometers were requested, in a single pass. H1/L1 (and,
+            # for O2/O3 events, V1) come from the local calibration archive
+            # -- optionally with a different `calibration version` per
+            # interferometer, via a dict. For O4b onwards Virgo calibration
+            # isn't distributed as a local text file at all, so if it wasn't
+            # found in the archive it is retrieved from a frame file instead,
+            # unless local storage was explicitly requested (`source: {type:
+            # local storage}`), in which case frame-based retrieval is never
+            # attempted. A single analysis listing all the interferometers it
+            # needs no longer has to be split across per-IFO/per-source
+            # analyses.
+            lookup_ifos = list(requested_ifos) if requested_ifos else ["H1", "L1"]
+
+            directory = settings.get("locations", {}).get("calibration directory", None)
+            found = calibration.find_calibrations_on_cit(
+                settings["time"]["start"],
+                directory,
+                version=settings.get("calibration version", "v1"),
+                interferometers=lookup_ifos,
+            )
+
+            if ("V1" in lookup_ifos) and ("V1" not in found) and (type != "local storage"):
+                calibration.get_calibration_from_frame(
+                    ifo="V1",
+                    prefix=settings.get("virgo prefix", "V1:Hrec_hoft_U00"),
+                    timestamp_channel=settings.get("virgo timestamp channel", None),
+                    frametype=settings.get("virgo frametype", "V1:HoftAR1"),
+                    time=settings["time"]["start"],
+                    host=settings.get("locations", {})\
+                    .get("datafind server", "datafind.igwn.org")
+                )
+        else:
+            logger.error(f"Unrecognised calibration source type: {type}")
 
         settings["data"].remove("calibration")
 

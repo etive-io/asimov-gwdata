@@ -47,7 +47,7 @@ locations:
   calibration directory: {{ production.meta['locations']['calibration directory'] }}
   {% endif %}
   {% if production.meta['locations'] contains 'datafind server' %}
-  calibration directory: {{ production.meta['locations']['datafind server'] }}
+  datafind server: {{ production.meta['locations']['datafind server'] }}
   {% endif %}
 {% endif %}
 
