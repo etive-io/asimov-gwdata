@@ -1,0 +1,35 @@
+/* Custom styles for asimov-gwdata documentation */
+
+.version-switcher {
+    background-color: #f8f9fa;
+    padding: 10px;
+    margin: 10px 0;
+    border-radius: 5px;
+    border: 1px solid #dee2e6;
+}
+
+.version-switcher h3 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    font-size: 1.1em;
+    color: #333;
+}
+
+.version-switcher ul {
+    list-style-type: none;
+    padding-left: 0;
+    margin: 0;
+}
+
+.version-switcher li {
+    padding: 5px 0;
+}
+
+.version-switcher a {
+    color: #0066cc;
+    text-decoration: none;
+}
+
+.version-switcher a:hover {
+    text-decoration: underline;
+}

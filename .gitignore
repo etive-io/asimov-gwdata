@@ -122,7 +122,26 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-# VSCode
+# Testing
+tests/GW150914.hdf5
+tests/*.h5
+# Test output files
+H1.dat
+H1.txt
+L1.dat
+L1.txt
+*.dat
+*.txt
+
+# IDEs
 .vscode/
+.idea/
 *.code-workspace
 .history/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db

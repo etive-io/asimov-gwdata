@@ -1,0 +1,11 @@
+<div class="version-switcher">
+  <h3>Versions</h3>
+  <ul>
+    {%- for item in versions %}
+    <li>
+      <a href="{{ item.url }}">{{ item.name }}</a>
+      {%- if item.name == current_version %} (current){%- endif %}
+    </li>
+    {%- endfor %}
+  </ul>
+</div>
