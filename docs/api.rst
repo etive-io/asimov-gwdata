@@ -46,6 +46,26 @@ The metafiles module provides functionality for working with PESummary metafiles
    :undoc-members:
    :show-inheritance:
 
+Report Module
+~~~~~~~~~~~~~
+
+The report module builds an HTML summary of a download job's assets, including spectrograms of any downloaded frames.
+
+.. automodule:: datafind.report
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Plotting Module
+~~~~~~~~~~~~~~~
+
+The plotting module provides the spectrogram plotting helper used by the report module.
+
+.. automodule:: datafind.plotting
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 Asimov Pipeline
 ~~~~~~~~~~~~~~~
 

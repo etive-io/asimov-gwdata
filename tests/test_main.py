@@ -21,6 +21,23 @@ def write_settings(path, settings):
         yaml.safe_dump(settings, f)
 
 
+def invoke_get_data(tmpdir, settings_path, **kwargs):
+    """
+    Run the ``gwdata`` CLI with ``tmpdir`` as the working directory.
+
+    ``get_data`` writes its outputs (``calibration/``, ``psds/``,
+    ``report/``, etc.) relative to the current working directory, so every
+    invocation needs an isolated cwd to avoid littering the repo checkout
+    with test-run artifacts.
+    """
+    original_cwd = os.getcwd()
+    try:
+        os.chdir(tmpdir)
+        return CliRunner().invoke(get_data, ["--settings", settings_path], **kwargs)
+    finally:
+        os.chdir(original_cwd)
+
+
 class TestFramesDispatch(unittest.TestCase):
     def test_frames_uses_gwosc(self):
         with temporary_test_directory() as tmpdir:
@@ -35,10 +52,81 @@ class TestFramesDispatch(unittest.TestCase):
             )
             with patch("datafind.main.get_data_frames_gwosc") as mock_gwosc:
                 mock_gwosc.return_value = ({}, {})
-                result = CliRunner().invoke(get_data, ["--settings", settings_path])
+                result = invoke_get_data(tmpdir, settings_path)
 
             self.assertEqual(result.exit_code, 0, result.output)
             mock_gwosc.assert_called_once_with(["H1", "L1"], 1126259462, 1126259478, 32)
+
+    def test_frames_uses_osdf_when_requested(self):
+        with temporary_test_directory() as tmpdir:
+            settings_path = os.path.join(tmpdir, "settings.yaml")
+            write_settings(
+                settings_path,
+                {
+                    "time": {"start": 1126259462, "end": 1126259478, "duration": 32},
+                    "data": ["frames"],
+                    "source": {"frames": "osdf"},
+                    "frame types": ["H1:H1_HOFT_C02", "L1:L1_HOFT_C02"],
+                    "locations": {"datafind server": "datafind.example.org"},
+                },
+            )
+            with patch("datafind.main.get_data_frames_private") as mock_private:
+                mock_private.return_value = ({}, {})
+                result = invoke_get_data(tmpdir, settings_path)
+
+            self.assertEqual(result.exit_code, 0, result.output)
+            mock_private.assert_called_once_with(
+                ["H1:H1_HOFT_C02", "L1:L1_HOFT_C02"],
+                1126259462,
+                1126259478,
+                download=True,
+                host="datafind.example.org",
+            )
+
+    def test_frames_raises_for_unknown_source(self):
+        with temporary_test_directory() as tmpdir:
+            settings_path = os.path.join(tmpdir, "settings.yaml")
+            write_settings(
+                settings_path,
+                {
+                    "time": {"start": 1126259462, "end": 1126259478, "duration": 32},
+                    "data": ["frames"],
+                    "source": {"frames": "not-a-real-source"},
+                },
+            )
+            result = invoke_get_data(tmpdir, settings_path)
+
+            self.assertNotEqual(result.exit_code, 0)
+            self.assertIsInstance(result.exception, ValueError)
+
+    def test_frames_populates_report(self):
+        """
+        Regression test: get_data used to discard the return value of
+        get_data_frames_gwosc/get_data_frames_private entirely, so
+        ``_report.frames = frames`` referenced an undefined ``frames``
+        variable, crashing with a NameError on every frames download.
+        """
+        with temporary_test_directory() as tmpdir:
+            settings_path = os.path.join(tmpdir, "settings.yaml")
+            write_settings(
+                settings_path,
+                {
+                    "interferometers": ["H1"],
+                    "time": {"start": 1126259462, "end": 1126259478, "duration": 32},
+                    "data": ["frames"],
+                },
+            )
+            with patch("datafind.main.get_data_frames_gwosc") as mock_gwosc, patch(
+                "datafind.main.Report"
+            ) as mock_report_cls:
+                mock_gwosc.return_value = ({"H1": ["url"]}, {"H1": ["H-H1-1-32.gwf"]})
+                mock_report = MagicMock()
+                mock_report_cls.return_value = mock_report
+                result = invoke_get_data(tmpdir, settings_path)
+
+            self.assertEqual(result.exit_code, 0, result.output)
+            self.assertEqual(mock_report.frames, {"H1": ["H-H1-1-32.gwf"]})
+            mock_report._add_spectrograms.assert_called_once()
 
 
 class TestCalibrationDispatch(unittest.TestCase):
@@ -62,7 +150,7 @@ class TestCalibrationDispatch(unittest.TestCase):
                 },
             )
             with patch("datafind.main.calibration.find_calibrations_on_cit") as mock_find:
-                result = CliRunner().invoke(get_data, ["--settings", settings_path])
+                result = invoke_get_data(tmpdir, settings_path)
 
             self.assertEqual(result.exit_code, 0, result.output)
             mock_find.assert_called_once_with(
@@ -81,7 +169,7 @@ class TestCalibrationDispatch(unittest.TestCase):
                 },
             )
             with patch("datafind.main.calibration.find_calibrations_on_cit") as mock_find:
-                result = CliRunner().invoke(get_data, ["--settings", settings_path])
+                result = invoke_get_data(tmpdir, settings_path)
 
             self.assertEqual(result.exit_code, 0, result.output)
             mock_find.assert_called_once()
@@ -108,7 +196,7 @@ class TestCalibrationDispatch(unittest.TestCase):
             fake_metafile_cm.__exit__.return_value = False
 
             with patch("datafind.main.Metafile", return_value=fake_metafile_cm) as mock_meta_cls:
-                result = CliRunner().invoke(get_data, ["--settings", settings_path])
+                result = invoke_get_data(tmpdir, settings_path)
 
             self.assertEqual(result.exit_code, 0, result.output)
             mock_meta_cls.assert_called_once_with("fake.h5")
@@ -130,7 +218,7 @@ class TestCalibrationDispatch(unittest.TestCase):
                 },
             )
             with patch("datafind.main.calibration.get_calibration_from_frame") as mock_frame:
-                result = CliRunner().invoke(get_data, ["--settings", settings_path])
+                result = invoke_get_data(tmpdir, settings_path)
 
             self.assertEqual(result.exit_code, 0, result.output)
             mock_frame.assert_called_once_with(
@@ -162,16 +250,12 @@ class TestPosteriorAndPsdsDispatch(unittest.TestCase):
             )
             with patch("datafind.main.read") as mock_read:
                 mock_read.return_value = MagicMock()
-                result = CliRunner().invoke(
-                    get_data, ["--settings", settings_path], catch_exceptions=False
-                )
+                result = invoke_get_data(tmpdir, settings_path, catch_exceptions=False)
 
             self.assertEqual(result.exit_code, 0, result.output)
             self.assertTrue(
-                os.path.exists(os.path.join(os.getcwd(), "posterior", "metafile.h5"))
+                os.path.exists(os.path.join(tmpdir, "posterior", "metafile.h5"))
             )
-            os.remove(os.path.join(os.getcwd(), "posterior", "metafile.h5"))
-            os.rmdir(os.path.join(os.getcwd(), "posterior"))
 
     def test_psds_only(self):
         with temporary_test_directory() as tmpdir:
@@ -195,7 +279,7 @@ class TestPosteriorAndPsdsDispatch(unittest.TestCase):
             fake_metafile_cm.__exit__.return_value = False
 
             with patch("datafind.main.Metafile", return_value=fake_metafile_cm):
-                result = CliRunner().invoke(get_data, ["--settings", settings_path])
+                result = invoke_get_data(tmpdir, settings_path)
 
             self.assertEqual(result.exit_code, 0, result.output)
             fake_metafile.psd.assert_called_once_with("C01:IMRPhenomXPHM")
@@ -206,7 +290,7 @@ class TestPosteriorAndPsdsDispatch(unittest.TestCase):
         with temporary_test_directory() as tmpdir:
             settings_path = os.path.join(tmpdir, "settings.yaml")
             write_settings(settings_path, {"data": ["psds"]})
-            result = CliRunner().invoke(get_data, ["--settings", settings_path])
+            result = invoke_get_data(tmpdir, settings_path)
 
             self.assertNotEqual(result.exit_code, 0)
             self.assertIsInstance(result.exception, ValueError)
@@ -218,7 +302,7 @@ class TestPosteriorAndPsdsDispatch(unittest.TestCase):
                 settings_path,
                 {"data": ["psds"], "source": {"type": "local storage"}},
             )
-            result = CliRunner().invoke(get_data, ["--settings", settings_path])
+            result = invoke_get_data(tmpdir, settings_path)
 
             self.assertNotEqual(result.exit_code, 0)
             self.assertIsInstance(result.exception, ValueError)
@@ -242,7 +326,7 @@ class TestCombinedDispatch(unittest.TestCase):
                 "datafind.main.calibration.find_calibrations_on_cit"
             ) as mock_find:
                 mock_gwosc.return_value = ({}, {})
-                result = CliRunner().invoke(get_data, ["--settings", settings_path])
+                result = invoke_get_data(tmpdir, settings_path)
 
             self.assertEqual(result.exit_code, 0, result.output)
             mock_gwosc.assert_called_once()
@@ -275,14 +359,7 @@ class TestCalibrationAndPsdsFromRealMetafile(unittest.TestCase):
                 },
             )
 
-            original_cwd = os.getcwd()
-            try:
-                os.chdir(tmpdir)
-                result = CliRunner().invoke(
-                    get_data, ["--settings", settings_path], catch_exceptions=False
-                )
-            finally:
-                os.chdir(original_cwd)
+            result = invoke_get_data(tmpdir, settings_path, catch_exceptions=False)
 
             self.assertEqual(result.exit_code, 0, result.output)
             self.assertTrue(os.path.exists(os.path.join(tmpdir, "calibration", "H1.dat")))

@@ -349,12 +349,19 @@ class TestAfterCompletionAndHtml(PipelineTestCase):
         production.event.update_data.assert_called_once()
 
     def test_html_empty_when_not_finished(self):
-        pipeline, production = self.make_pipeline(event_meta={"data": {}})
-        production.status = "running"
-        self.assertEqual(pipeline.html(), "")
+        with temporary_test_directory() as tmpdir, temporary_test_directory() as webroot:
+            pipeline, production = self.make_pipeline(rundir=tmpdir, event_meta={"data": {}})
+            production.status = "running"
+            with patch.object(
+                self.asimov_module.config, "get",
+                side_effect=_config_get(
+                    {("project", "root"): webroot, ("general", "webroot"): "results"}
+                ),
+            ):
+                self.assertEqual(pipeline.html(), "")
 
     def test_html_renders_assets_when_finished(self):
-        with temporary_test_directory() as tmpdir:
+        with temporary_test_directory() as tmpdir, temporary_test_directory() as webroot:
             os.makedirs(os.path.join(tmpdir, "cache"))
             open(os.path.join(tmpdir, "cache", "H1.cache"), "w").close()
             pipeline, production = self.make_pipeline(
@@ -364,9 +371,36 @@ class TestAfterCompletionAndHtml(PipelineTestCase):
             )
             production.status = "finished"
 
-            html = pipeline.html()
+            with patch.object(
+                self.asimov_module.config, "get",
+                side_effect=_config_get(
+                    {("project", "root"): webroot, ("general", "webroot"): "results"}
+                ),
+            ):
+                html = pipeline.html()
             self.assertIn("asimov-pipeline", html)
             self.assertIn("H1", html)
+
+    def test_html_links_to_report_when_present(self):
+        with temporary_test_directory() as tmpdir, temporary_test_directory() as webroot:
+            os.makedirs(os.path.join(tmpdir, "report"))
+            open(os.path.join(tmpdir, "report", "index.html"), "w").close()
+            pipeline, production = self.make_pipeline(rundir=tmpdir, event_meta={"data": {}})
+            production.status = "running"
+
+            with patch.object(
+                self.asimov_module.config, "get",
+                side_effect=_config_get(
+                    {("project", "root"): webroot, ("general", "webroot"): "results"}
+                ),
+            ):
+                html = pipeline.html()
+
+            self.assertIn("Summary report", html)
+            copied_index = os.path.join(
+                webroot, "results", production.event.name, production.name, "index.html"
+            )
+            self.assertTrue(os.path.exists(copied_index))
 
 
 if __name__ == "__main__":

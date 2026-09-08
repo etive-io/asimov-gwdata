@@ -72,7 +72,7 @@ jobs:
           git config --global --add safe.directory "${GITHUB_WORKSPACE}"
           conda activate asimov
           python -m pip install --upgrade pip
-          python -m pip install --force-reinstall ".[test]"
+          python -m pip install --force-reinstall "."
           echo "Installed asimov from: $(python -c 'import asimov; print(asimov.__file__)')"
           echo "Installed gwdata pipeline plugin from: $(python -c 'import datafind.asimov; print(datafind.asimov.__file__)')"
 
@@ -150,6 +150,14 @@ jobs:
           patterns: "H1.cache"
           directory: "working/GW150914_095045/get-data-frames/cache"
           timeout: "60"
+          interval: "10"
+
+      - name: Wait for HTML report
+        uses: etive-io/actions/wait-for-files@v1
+        with:
+          patterns: "index.html"
+          directory: "working/GW150914_095045/get-data-frames/report"
+          timeout: "120"
           interval: "10"
 
       # --- Scenario 2: local-storage calibration --------------------------

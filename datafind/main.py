@@ -14,7 +14,8 @@ from asimov.utils import set_directory
 from .metafiles import Metafile
 from . import calibration
 
-from .frames import get_data_frames_gwosc
+from .frames import get_data_frames_gwosc, get_data_frames_private
+from .report import Report
 
 logger = logging.getLogger("gwdata")
 
@@ -24,13 +25,31 @@ def get_data(settings):  # detectors, start, end, duration, frames):
     with open(settings, "r") as file_handle:
         settings = yaml.safe_load(file_handle)
 
+    _report = Report(webdir="report", settings=settings)
+
     if "frames" in settings["data"]:
-        get_data_frames_gwosc(
-            settings["interferometers"],
-            settings["time"]["start"],
-            settings["time"]["end"],
-            settings["time"]["duration"],
-        )
+        if settings.get("source", {}).get("frames", None) == "osdf":
+            _, frames = get_data_frames_private(
+                settings.get("frame types", []),
+                settings["time"]["start"],
+                settings["time"]["end"],
+                download=True,
+                host=settings.get("locations", {}).get("datafind server", "datafind.igwn.org"),
+            )
+        elif (settings.get("source", {}).get("frames", None) == "gwosc") \
+                or (settings.get("source", {}).get("frames", None) is None):
+            _, frames = get_data_frames_gwosc(
+                settings["interferometers"],
+                settings["time"]["start"],
+                settings["time"]["end"],
+                settings["time"]["duration"],
+            )
+        else:
+            raise ValueError("No source for frames was specified.")
+
+        _report.frames = frames
+        _report._add_spectrograms()
+
         settings["data"].remove("frames")
 
     if "calibration" in settings["data"]:
