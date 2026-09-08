@@ -350,7 +350,13 @@ DCC_VIRGO_ARCHIVES = {
 # distribute, and duplicating the shared ranges here is simpler than
 # threading a "public" mode through the existing lookup ladder.
 DCC_OBSERVING_RUNS = {
-    "O1":   (1126623617, 1136649617),
+    # O1's start here is the true GWOSC/O1 run boundary (2015-09-12), not
+    # the later 1126623617 used by find_calibrations_on_cit's own table --
+    # that later value excludes GW150914 (1126259462), but the real O1 DCC
+    # archive does contain hourly files back to the actual run start (the
+    # earliest sampled during development was 1126417277), so there's no
+    # reason to exclude it here too.
+    "O1":   (1126051217, 1137254417),
     "O2":   (1164556817, 1187733618),
     "O3a":  (1238166018, 1253977218),
     "O3b":  (1256655618, 1269363618),
@@ -472,7 +478,7 @@ def get_calibration_from_dcc(time, run=None, interferometers=("H1", "L1"), cache
     if "V1" in interferometers:
         if run in DCC_VIRGO_ARCHIVES:
             extract_dir = _download_and_extract_dcc_archive(DCC_VIRGO_ARCHIVES[run], cache_dir)
-            candidates = glob.glob(os.path.join(extract_dir, "V1", "*.txt"))
+            candidates = sorted(glob.glob(os.path.join(extract_dir, "V1", "*.txt")))
             if run in ("O3a", "O3b"):
                 candidates = [c for c in candidates if f"_{run}_" in os.path.basename(c)]
             if candidates:
