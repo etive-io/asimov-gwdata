@@ -113,8 +113,9 @@ def get_data_frames_private(
     logger.info(urls)
     if download:
         for ifo, det_urls in urls.items():
+            files[ifo] = []
             for url in det_urls:
-                files[ifo] = download_file(url, directory="frames")
+                files[ifo].append(download_file(url, directory="frames"))
     return urls, files
 
 
@@ -133,7 +134,7 @@ def get_data_frames_gwosc(detectors, start, end, duration):
         for url in det_urls:
             duration_u = int(url.split("/")[-1].split(".")[0].split("-")[-1])
             filename = url.split("/")[-1]
-            if duration_u == duration:
+            if duration_u >= duration:
                 det_urls_dur.append(url)
                 download_file(url)
                 det_files.append(filename)

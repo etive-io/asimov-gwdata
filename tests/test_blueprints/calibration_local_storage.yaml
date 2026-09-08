@@ -8,8 +8,6 @@ pipeline: gwdata
 event time: 1400000000
 download:
   - calibration
-source:
-  type: local storage
 locations:
   calibration directory: /tmp/gwdata-e2e/cal-archive
 calibration version: v1

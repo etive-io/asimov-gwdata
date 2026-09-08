@@ -27,7 +27,7 @@ classifiers = [
 requires-python = ">=3.7"
 dependencies = [
         "gwosc",
-	"asimov>=0.4.0",
+	"asimov>=0.7.0",
 	"pesummary",
 	"numpy",
 	"requests",
@@ -50,14 +50,13 @@ rift = [
 
 test = [
 	"gwdatafind-server>=1.5.0",
-	"htcondor",
 ]
 
 [project.scripts]
 #gwdata = "datafind:main"
 gwdata = "datafind.main:get_data"
 [project.urls]
-"Source code" = "https://git.ligo.org/asimov/asimov-gwdatahelp"
+"Source code" = "https://git.ligo.org/asimov/pipelines/gwdata"
 
 [tool.setuptools]
 packages = [

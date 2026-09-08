@@ -245,12 +245,12 @@ def get_calibration_from_frame(
 
     start = time - 60
     end = time + 60
-    frame = get_data_frames_private([frametype], start, end, download=True, host=host)[1][ifo]
+    frame = get_data_frames_private([frametype], start, end, download=True, host=host)[1][ifo][0]
     frame_o = Frame(os.path.join("frames", frame))
     nearest = frame_o.nearest_calibration(time=start, channel=timestamp_channel)
     logger.info(f"The nearest calibration is at {nearest}")
     if not nearest in frame_o:
-        frame = get_data_frames_private([frametype], nearest-1, nearest+1, download=True, host=host)[1][0]
+        frame = get_data_frames_private([frametype], nearest-1, nearest+1, download=True, host=host)[1][ifo][0]
 
     envelope = CalibrationUncertaintyEnvelope.from_frame(
         frame=os.path.join("frames", frame),
@@ -357,7 +357,7 @@ def find_calibrations_on_cit(time,
         "O4a":  [1368975618, 1389456018], #  2023-05-24 15:00 to 2024-01-16 16:00
         "ER16": [1394982018, 1396792818], #  2024-03-20 15:00 to 2024-04-10 14:00
         "O4b":  [1396792818, 1422118818], #  2024-04-10 14:00 to 2025-01-28 17:00
-        "O4c":  [1422118818, 1443884418], #  2025-01-28 17:00 to 2025-10-07 15:00
+        "O4c":  [1422118818, 1447516818], #  2025-01-28 17:00 to 2025-11-18 16:00
     }
 
     def identify_run_from_gpstime(time):
@@ -413,6 +413,18 @@ def find_calibrations_on_cit(time,
     elif run in ("O4a", "O4b", "O4c"):
         # This looks like an O4 time
         logger.info("Retrieving O4 calibration envelopes")
+        if base_dir:
+            dir = base_dir
+        else:
+            dir = os.path.join(os.path.sep, "home", "cal", "public_html", "archive")
+        data = get_o4_style_calibration(dir, time, version)
+
+        logger.debug(f"Found envelopes: {data}")
+
+    elif run in ("ER15", "ER16"):
+        # This looks like an O4 time but during an engineering run
+        logger.info("Retrieving O4 calibration envelopes")
+        logger.warning("This event is during an engineering run.")
         if base_dir:
             dir = base_dir
         else:

@@ -1,19 +1,20 @@
 """
 Tests for the asimov pipeline plugin (``datafind.asimov.Pipeline``).
 
-``datafind/asimov.py`` imports the ``htcondor`` python bindings unconditionally
-at module level, so a stub is installed in ``sys.modules`` before the module
-is imported here. This keeps these tests independent of whether the real
-HTCondor bindings (and a running HTCondor daemon) are available - that full,
-real-daemon exercise belongs to the end-to-end workflow instead.
+Job submission is tested by mocking ``Pipeline.scheduler`` (asimov's own
+scheduler-agnostic abstraction, ``asimov.scheduler.Scheduler``) rather than
+any HTCondor internals - ``datafind.asimov`` no longer imports ``htcondor``
+directly at all. A real HTCondor daemon is only exercised by the end-to-end
+workflow.
 """
 import configparser
 import os
-import sys
 import unittest
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
+import datafind.asimov as datafind_asimov
+from asimov.scheduler import JobDescription
 from tests.test_fixtures import temporary_test_directory
 
 
@@ -31,50 +32,9 @@ def _config_get(values):
     return _get
 
 
-class _FakeSubmit(dict):
-    """Stand-in for ``htcondor.Submit`` that behaves like a real description dict."""
-
-    def __str__(self):
-        return "\n".join(f"{k} = {v}" for k, v in self.items())
-
-    def queue(self, txn):
-        return 4242
-
-
-def _install_htcondor_stub():
-    stub = MagicMock(name="htcondor")
-    stub.Submit = _FakeSubmit
-    stub.classad.quote.side_effect = lambda value: f'"{value}"'
-
-    schedd = MagicMock(name="schedd")
-    txn = MagicMock()
-    txn.__enter__.return_value = txn
-    txn.__exit__.return_value = False
-    schedd.transaction.return_value = txn
-
-    stub.Collector.return_value.locate.return_value = "schedd@localhost"
-    stub.Schedd.return_value = schedd
-    return stub, schedd
-
-
 class PipelineTestCase(unittest.TestCase):
-    """Base class which imports ``datafind.asimov`` under a stubbed ``htcondor``."""
-
-    @classmethod
-    def setUpClass(cls):
-        cls.htcondor_stub, cls.schedd_stub = _install_htcondor_stub()
-        cls._modules_patch = patch.dict(sys.modules, {"htcondor": cls.htcondor_stub})
-        cls._modules_patch.start()
-        sys.modules.pop("datafind.asimov", None)
-        import datafind.asimov as datafind_asimov
-
-        cls.asimov_module = datafind_asimov
-        cls.Pipeline = datafind_asimov.Pipeline
-
-    @classmethod
-    def tearDownClass(cls):
-        cls._modules_patch.stop()
-        sys.modules.pop("datafind.asimov", None)
+    asimov_module = datafind_asimov
+    Pipeline = datafind_asimov.Pipeline
 
     def make_production(self, meta=None, event_meta=None, rundir=None, ini_contents=None):
         ini_path = None
@@ -102,6 +62,17 @@ class PipelineTestCase(unittest.TestCase):
     def make_pipeline(self, **kwargs):
         production = self.make_production(**kwargs)
         return self.Pipeline(production), production
+
+    def make_pipeline_with_scheduler(self, cluster_id=4242, **kwargs):
+        """Like ``make_pipeline``, but with a mocked scheduler pre-installed
+        (bypassing the real, lazily-constructed one from the ``Pipeline``
+        base class) so ``build_dag`` never touches a real HTCondor/Slurm
+        backend."""
+        pipeline, production = self.make_pipeline(**kwargs)
+        scheduler = MagicMock()
+        scheduler.submit.return_value = cluster_id
+        pipeline._scheduler = scheduler
+        return pipeline, production, scheduler
 
 
 class TestSubstituteLocationsInConfig(PipelineTestCase):
@@ -148,7 +119,7 @@ class TestSubstituteLocationsInConfig(PipelineTestCase):
 class TestBuildAndSubmitDag(PipelineTestCase):
     def test_build_dag_writes_submit_files_and_sets_job_id(self):
         with temporary_test_directory() as tmpdir:
-            pipeline, production = self.make_pipeline(
+            pipeline, production, scheduler = self.make_pipeline_with_scheduler(
                 rundir=tmpdir,
                 ini_contents="data: [frames]\n",
                 meta={"scheduler": {"accounting group": "ligo.dev.o4.cbc.pe.bilby"}},
@@ -176,12 +147,17 @@ class TestBuildAndSubmitDag(PipelineTestCase):
             self.assertIn("batch_name = gwdata/get-data", sub_contents)
             self.assertIn("accounting_group = ligo.dev.o4.cbc.pe.bilby", sub_contents)
 
+            scheduler.submit.assert_called_once()
+            (submitted_job,), _ = scheduler.submit.call_args
+            self.assertIsInstance(submitted_job, JobDescription)
+            self.assertEqual(submitted_job.executable, os.path.join("/opt/env", "bin", "gwdata"))
+
             self.assertEqual(production.job_id, 4242)
             self.assertEqual(pipeline.clusterid, 4242)
 
     def test_build_dag_without_accounting_group_still_submits(self):
         with temporary_test_directory() as tmpdir:
-            pipeline, production = self.make_pipeline(
+            pipeline, production, scheduler = self.make_pipeline_with_scheduler(
                 rundir=tmpdir, ini_contents="data: [frames]\n", meta={}
             )
             with patch.object(
@@ -194,6 +170,52 @@ class TestBuildAndSubmitDag(PipelineTestCase):
                 sub_contents = f.read()
             self.assertNotIn("accounting_group", sub_contents)
             self.assertEqual(production.job_id, 4242)
+
+    def test_build_dag_requests_scitoken_for_frame_source(self):
+        with temporary_test_directory() as tmpdir:
+            pipeline, _, scheduler = self.make_pipeline_with_scheduler(
+                rundir=tmpdir,
+                ini_contents="data: [calibration]\n",
+                meta={"source": {"type": "frame"}},
+            )
+            with patch.object(
+                self.asimov_module.config, "get",
+                side_effect=_config_get({("pipelines", "environment"): "/opt/env"}),
+            ):
+                pipeline.build_dag()
+
+            (submitted_job,), _ = scheduler.submit.call_args
+            self.assertEqual(submitted_job.to_htcondor()["use_oauth_services"], "scitokens")
+
+    def test_build_dag_requests_scitoken_for_osdf_frames(self):
+        with temporary_test_directory() as tmpdir:
+            pipeline, _, scheduler = self.make_pipeline_with_scheduler(
+                rundir=tmpdir,
+                ini_contents="data: [frames]\n",
+                meta={"source": {"frames": "osdf"}},
+            )
+            with patch.object(
+                self.asimov_module.config, "get",
+                side_effect=_config_get({("pipelines", "environment"): "/opt/env"}),
+            ):
+                pipeline.build_dag()
+
+            (submitted_job,), _ = scheduler.submit.call_args
+            self.assertEqual(submitted_job.to_htcondor()["use_oauth_services"], "scitokens")
+
+    def test_build_dag_no_scitoken_for_gwosc_frames(self):
+        with temporary_test_directory() as tmpdir:
+            pipeline, _, scheduler = self.make_pipeline_with_scheduler(
+                rundir=tmpdir, ini_contents="data: [frames]\n", meta={}
+            )
+            with patch.object(
+                self.asimov_module.config, "get",
+                side_effect=_config_get({("pipelines", "environment"): "/opt/env"}),
+            ):
+                pipeline.build_dag()
+
+            (submitted_job,), _ = scheduler.submit.call_args
+            self.assertNotIn("use_oauth_services", submitted_job.to_htcondor())
 
     def test_submit_dag_sets_status_running(self):
         pipeline, production = self.make_pipeline()
@@ -270,6 +292,48 @@ class TestCollectAssets(PipelineTestCase):
             self.assertIn("H1", production.event.meta["data"]["calibration"])
             self.assertIn("H1", production.event.meta["psds"])
 
+    def test_multiple_frame_files_for_the_same_ifo_are_all_collected(self):
+        """
+        Regression test: collect_assets used to overwrite frames[ifo] on
+        each match instead of accumulating a list, so only the
+        alphabetically-last frame file for a detector survived when more
+        than one existed in the rundir (e.g. two segments for the same
+        interferometer).
+        """
+        with temporary_test_directory() as tmpdir:
+            os.makedirs(os.path.join(tmpdir, "frames"))
+            open(os.path.join(tmpdir, "frames", "H-H1_GWOSC_16KHZ_R1-1126259447-32.gwf"), "w").close()
+            open(os.path.join(tmpdir, "frames", "H-H1_GWOSC_16KHZ_R1-1126259479-32.gwf"), "w").close()
+
+            pipeline, _ = self.make_pipeline(
+                rundir=tmpdir,
+                meta={"download": ["frames"]},
+                event_meta={"data": {}},
+            )
+            assets = pipeline.collect_assets()
+
+            self.assertIsInstance(assets["frames"]["H1"], list)
+            self.assertEqual(len(assets["frames"]["H1"]), 2)
+
+    def test_stale_cache_dir_ignored_when_frames_not_requested(self):
+        """
+        Regression test: a cache/ directory left over from an earlier job in
+        the same rundir used to be picked up even when this job didn't
+        request frames at all.
+        """
+        with temporary_test_directory() as tmpdir:
+            os.makedirs(os.path.join(tmpdir, "cache"))
+            open(os.path.join(tmpdir, "cache", "H1.cache"), "w").close()
+
+            pipeline, _ = self.make_pipeline(
+                rundir=tmpdir,
+                meta={"download": ["calibration"]},
+                event_meta={"data": {}},
+            )
+            assets = pipeline.collect_assets()
+
+            self.assertNotIn("caches", assets)
+
     def test_empty_rundir_returns_no_assets(self):
         with temporary_test_directory() as tmpdir:
             pipeline, _ = self.make_pipeline(rundir=tmpdir, event_meta={"data": {}})
@@ -293,7 +357,11 @@ class TestAfterCompletionAndHtml(PipelineTestCase):
         with temporary_test_directory() as tmpdir:
             os.makedirs(os.path.join(tmpdir, "cache"))
             open(os.path.join(tmpdir, "cache", "H1.cache"), "w").close()
-            pipeline, production = self.make_pipeline(rundir=tmpdir, event_meta={"data": {}})
+            pipeline, production = self.make_pipeline(
+                rundir=tmpdir,
+                meta={"download": ["frames"]},
+                event_meta={"data": {}},
+            )
             production.status = "finished"
 
             html = pipeline.html()

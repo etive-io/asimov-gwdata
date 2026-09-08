@@ -18,12 +18,14 @@ Strain Data (Frames)
 * Automatic cache file generation
 * Support for all observing runs (O1-O4)
 
-**Private Data Access**
-
-* Access to proprietary LIGO/Virgo/KAGRA data
-* OSDF/Pelican protocol support
-* Authentication via scitokens
-* Datafind server integration
+.. note::
+   The ``frames`` download type always retrieves *public* strain data from
+   GWOSC. Private/proprietary frame access (OSDF/Pelican, scitoken
+   authentication, datafind server lookups) exists in the codebase
+   (:func:`datafind.frames.get_data_frames_private`) but is currently only
+   used internally, to retrieve the frame that Virgo's O4+ calibration
+   uncertainty envelopes are embedded in - it is not yet exposed as a
+   ``frames`` download option.
 
 See: :doc:`frames` for detailed documentation.
 
