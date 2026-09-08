@@ -97,6 +97,13 @@ def get_data(settings):  # detectors, start, end, duration, frames):
                     host=settings.get("locations", {})\
                     .get("datafind server", "datafind.igwn.org")
                 )
+        elif type == "public":
+            # Retrieve publicly-distributed calibration uncertainty envelopes
+            # from the LIGO DCC, requiring no IGWN credentials or CIT access.
+            calibration.get_calibration_from_dcc(
+                time=settings["time"]["start"],
+                interferometers=settings.get("interferometers", ["H1", "L1"]),
+            )
 
         settings["data"].remove("calibration")
 
