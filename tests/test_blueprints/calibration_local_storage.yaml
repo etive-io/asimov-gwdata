@@ -9,5 +9,9 @@ event time: 1400000000
 download:
   - calibration
 locations:
-  calibration directory: /tmp/gwdata-e2e/cal-archive
+  # Substituted at apply-time (see e2e-htcondor.yml) with an absolute path
+  # under $GITHUB_WORKSPACE - HTCondor execute-slot jobs in this container
+  # get a private /tmp, so a fixture placed there is invisible to the job
+  # that needs to read it back.
+  calibration directory: __E2E_FIXTURES_DIR__/cal-archive
 calibration version: v1

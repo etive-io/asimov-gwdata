@@ -7,6 +7,7 @@ from gwdatafind import find_urls
 from igwn_auth_utils import Session
 from requests_pelican import PelicanAdapter
 from .utils import download_file
+import glob
 import os
 import logging
 import numpy as np
@@ -141,6 +142,30 @@ def get_data_frames_private(
     return urls, files
 
 
+def _cached_gwosc_frames(detector, start, end, duration):
+    """
+    Find GWOSC frames for ``detector`` already present in ``frames/`` that
+    cover ``[start, end]`` with at least the requested ``duration``.
+
+    Lets a repeat request for the same window reuse what's on disk instead
+    of re-querying GWOSC - notably, an HTCondor-submitted job has no network
+    access of its own, so this is what allows it to pick up a frame that was
+    pre-fetched outside the job.
+    """
+    matches = []
+    for path in sorted(glob.glob(os.path.join("frames", f"{detector[0]}-{detector}_*.gwf"))):
+        filename = os.path.basename(path)
+        stem = filename.rsplit(".", 1)[0]
+        try:
+            frame_start = int(stem.split("-")[-2])
+            frame_duration = int(stem.split("-")[-1])
+        except (IndexError, ValueError):
+            continue
+        if frame_start <= start and (frame_start + frame_duration) >= end and frame_duration >= duration:
+            matches.append(filename)
+    return matches
+
+
 def get_data_frames_gwosc(detectors, start, end, duration):
     """
     Get data frames from GWOSC.
@@ -148,6 +173,13 @@ def get_data_frames_gwosc(detectors, start, end, duration):
     urls = {}
     files = {}
     for detector in detectors:
+        cached = _cached_gwosc_frames(detector, start, end, duration)
+        if cached:
+            logger.info(f"Using already-downloaded GWOSC frame(s) for {detector}: {cached}")
+            urls[detector] = []
+            files[detector] = cached
+            continue
+
         det_urls = get_urls(
             detector=detector, start=start, end=end, sample_rate=16384, format="gwf"
         )
