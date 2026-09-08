@@ -1,0 +1,6 @@
+kind: analysis
+name: get-data-frames
+pipeline: gwdata
+file length: 32
+download:
+  - frames

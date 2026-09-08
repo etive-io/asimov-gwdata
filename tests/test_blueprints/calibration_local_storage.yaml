@@ -1,0 +1,17 @@
+kind: analysis
+name: get-data-calibration-local
+pipeline: gwdata
+# Overrides the event's real GW150914 time with a synthetic O4b-era GPS time
+# so this analysis exercises find_calibrations_on_cit's O4-style archive
+# lookup against the fake calibration archive built in CI, rather than the
+# event's real (O1-era, unsupported) time.
+event time: 1400000000
+download:
+  - calibration
+locations:
+  # Substituted at apply-time (see e2e-htcondor.yml) with an absolute path
+  # under $GITHUB_WORKSPACE - HTCondor execute-slot jobs in this container
+  # get a private /tmp, so a fixture placed there is invisible to the job
+  # that needs to read it back.
+  calibration directory: __E2E_FIXTURES_DIR__/cal-archive
+calibration version: v1
