@@ -11,6 +11,22 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 
 from datafind.frames import Frame
+from datafind.plotting import plot_spectrogram
+
+
+class TestPlotSpectrogram(unittest.TestCase):
+    def test_raises_clear_error_without_time_or_window(self):
+        """
+        Regression test: calling plot_spectrogram() with none of `time`,
+        `start`, or `end` used to crash with a TypeError from doing
+        arithmetic on None, rather than a clear, actionable error.
+        """
+        with self.assertRaises(ValueError):
+            plot_spectrogram("H-H1_STRAIN-1-32.gwf", "H1:STRAIN")
+
+    def test_raises_clear_error_with_only_start(self):
+        with self.assertRaises(ValueError):
+            plot_spectrogram("H-H1_STRAIN-1-32.gwf", "H1:STRAIN", start=100.0)
 
 
 class TestFrameSpectrogram(unittest.TestCase):
@@ -56,6 +72,26 @@ class TestFrameSpectrogram(unittest.TestCase):
             result = frame.spectrogram(time=1126259462)
 
             self.assertEqual(mock_plot.call_count, 2)
+            self.assertIs(result, fake_figure)
+
+    def test_spectrogram_stops_after_first_success(self):
+        """
+        Regression test: spectrogram() used to keep trying every remaining
+        channel even after a successful plot, wasting an expensive
+        Q-transform per channel and potentially overwriting the first
+        successful result with a later, unrelated one.
+        """
+        with patch("datafind.frames.plot_spectrogram") as mock_plot, patch(
+            "datafind.frames.get_channel_names",
+            return_value=["H1:STRAIN", "H1:AUX"],
+        ):
+            fake_figure = MagicMock()
+            mock_plot.return_value = fake_figure
+
+            frame = Frame("H-H1_STRAIN-1-32.gwf")
+            result = frame.spectrogram(time=1126259462)
+
+            mock_plot.assert_called_once()
             self.assertIs(result, fake_figure)
 
     def test_spectrogram_returns_none_when_every_channel_fails(self):

@@ -63,6 +63,56 @@ class TestReportStandalone(unittest.TestCase):
                 # Should not raise, even though every spectrogram attempt fails.
                 report._add_spectrograms()
 
+    def test_single_frame_path_string_is_not_iterated_as_characters(self):
+        """
+        Regression test: an IFO's frames value can be a single path string
+        (per the `frames` property's own docstring), not just a list, but
+        _add_spectrograms used to iterate it directly - iterating a string
+        character-by-character and trying to build a Frame from each one.
+        """
+        with temporary_test_directory() as tmpdir, patch("datafind.report.otter.Otter"):
+            report = Report(
+                settings={"time": {"end": 1126259478}, "likelihood": {"post trigger time": 2}},
+                webdir=tmpdir,
+            )
+            fake_spectrogram = MagicMock()
+            with patch("datafind.report.Frame") as mock_frame_cls:
+                mock_frame_cls.return_value.spectrogram.return_value = fake_spectrogram
+                report.frames = {"H1": "H-H1_GWOSC-1126259462-32.gwf"}
+                report._add_spectrograms()
+
+            mock_frame_cls.assert_called_once_with(
+                os.path.join("frames", "H-H1_GWOSC-1126259462-32.gwf")
+            )
+
+    def test_clear_error_without_production_or_settings(self):
+        """
+        Regression test: constructing Report with neither `production` nor
+        `settings` (both are optional) and later assigning frames used to
+        hit an opaque AttributeError from calling `.get()` on
+        `self.settings` (None). Like any other per-frame spectrogram
+        failure this doesn't crash the whole report (it's caught and noted
+        inline), but the note itself should now name the real problem
+        instead of the confusing "'NoneType' object has no attribute
+        'get'".
+        """
+        with temporary_test_directory() as tmpdir, patch("datafind.report.otter.Otter"):
+            report = Report(webdir=tmpdir)
+            with patch("datafind.report.Frame"):
+                report.frames = {"H1": ["H-H1_GWOSC-1126259462-32.gwf"]}
+                # Should not raise - failures are noted in the report, not
+                # propagated - but should fail for the *right* reason.
+                report._add_spectrograms()
+
+            messages = [
+                call.args[0] for call in report.report.__add__.call_args_list
+            ]
+            self.assertTrue(
+                any("needs either a" in str(m) for m in messages),
+                f"Expected a clear 'needs either a production or settings' "
+                f"message, got: {messages}",
+            )
+
 
 class TestReportWithProduction(unittest.TestCase):
     """Tests for the production-backed construction path (asimov Pipeline.html())."""

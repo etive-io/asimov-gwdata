@@ -98,6 +98,31 @@ class TestFramesDispatch(unittest.TestCase):
 
             self.assertNotEqual(result.exit_code, 0)
             self.assertIsInstance(result.exception, ValueError)
+            self.assertIn("not-a-real-source", str(result.exception))
+
+    def test_frames_osdf_without_frame_types_raises(self):
+        """
+        Regression test: requesting OSDF frames without any `frame types`
+        used to silently pass an empty list through to
+        get_data_frames_private(), which just returns no frames - failing
+        the request without ever telling the user why.
+        """
+        with temporary_test_directory() as tmpdir:
+            settings_path = os.path.join(tmpdir, "settings.yaml")
+            write_settings(
+                settings_path,
+                {
+                    "time": {"start": 1126259462, "end": 1126259478, "duration": 32},
+                    "data": ["frames"],
+                    "source": {"frames": "osdf"},
+                },
+            )
+            with patch("datafind.main.get_data_frames_private") as mock_private:
+                result = invoke_get_data(tmpdir, settings_path)
+
+            mock_private.assert_not_called()
+            self.assertNotEqual(result.exit_code, 0)
+            self.assertIsInstance(result.exception, ValueError)
 
     def test_frames_populates_report(self):
         """

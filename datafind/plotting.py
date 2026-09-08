@@ -55,6 +55,10 @@ def plot_spectrogram(frame: str,
     fig, ax = plt.subplots(nrows=1, ncols=1, figsize=[21, 10/1.62])
 
     if time is None:
+        if start is None or end is None:
+            raise ValueError(
+                "plot_spectrogram() requires either `time`, or both `start` and `end`."
+            )
         start = start - outseg_before
         end = end + outseg_after
 

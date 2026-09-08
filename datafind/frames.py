@@ -52,8 +52,9 @@ class Frame:
             for channel in channels:
                 try:
                     spec_f = plot_spectrogram(self.framefile, channel, time=time)
+                    break
                 except Exception as e:
-                    print(f"Failed to plot spectrogram for channel {channel}: {e}")
+                    logger.warning(f"Failed to plot spectrogram for channel {channel}: {e}")
         else:
             spec_f = plot_spectrogram(self.framefile, channel, time=time)
 

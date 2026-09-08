@@ -13,7 +13,6 @@ except ImportError:
 from .frames import Frame
 
 import otter
-import otter.bootstrap as bt
 
 class Report:
     """
@@ -92,7 +91,8 @@ class Report:
         for ifo, frames in self.products.get("frames").items():
             # channel = self.production.meta.get("data", {}).get("channel", "None")
 
-            row = bt.Row(1)
+            if isinstance(frames, str):
+                frames = [frames]
 
             with self.report:
                 self.report + f"## Spectrograms for {ifo}"
@@ -103,9 +103,14 @@ class Report:
 
                     if self.production is not None:
                         time = self.production.meta.get("event time", None)
-                    else:
+                    elif self.settings is not None:
                         post_trigger = self.settings.get("likelihood", {}).get("post trigger time", 2)
                         time = self.settings.get("time", {}).get("end", None) - post_trigger
+                    else:
+                        raise ValueError(
+                            "Report needs either a `production` or `settings` to "
+                            "determine the time to center spectrograms on."
+                        )
 
                     spec_f = frame.spectrogram(time=time, channel=channel)
 

@@ -28,16 +28,21 @@ def get_data(settings):  # detectors, start, end, duration, frames):
     _report = Report(webdir="report", settings=settings)
 
     if "frames" in settings["data"]:
-        if settings.get("source", {}).get("frames", None) == "osdf":
+        frames_source = settings.get("source", {}).get("frames", None)
+        if frames_source == "osdf":
+            frame_types = settings.get("frame types", [])
+            if not frame_types:
+                raise ValueError(
+                    "source.frames is 'osdf' but no 'frame types' were specified."
+                )
             _, frames = get_data_frames_private(
-                settings.get("frame types", []),
+                frame_types,
                 settings["time"]["start"],
                 settings["time"]["end"],
                 download=True,
                 host=settings.get("locations", {}).get("datafind server", "datafind.igwn.org"),
             )
-        elif (settings.get("source", {}).get("frames", None) == "gwosc") \
-                or (settings.get("source", {}).get("frames", None) is None):
+        elif (frames_source == "gwosc") or (frames_source is None):
             _, frames = get_data_frames_gwosc(
                 settings["interferometers"],
                 settings["time"]["start"],
@@ -45,7 +50,7 @@ def get_data(settings):  # detectors, start, end, duration, frames):
                 settings["time"]["duration"],
             )
         else:
-            raise ValueError("No source for frames was specified.")
+            raise ValueError(f"Unrecognised source.frames value: {frames_source!r}")
 
         _report.frames = frames
         _report._add_spectrograms()

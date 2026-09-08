@@ -241,10 +241,11 @@ class Pipeline(asimov.pipeline.Pipeline):
                 self.production.name
             )
 
-        if not os.path.exists(webdir):
-            os.makedirs(webdir)
-
         if os.path.exists(os.path.join(self.production.rundir, "report")):
+            # copytree creates `webdir` (and any missing parents) itself,
+            # so there's no need to pre-create it - and no report dir means
+            # nothing to copy, so `webdir` shouldn't be created at all just
+            # from viewing the project page.
             shutil.copytree(
                 os.path.join(self.production.rundir, "report"),
                 webdir,

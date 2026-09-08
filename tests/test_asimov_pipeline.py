@@ -349,6 +349,12 @@ class TestAfterCompletionAndHtml(PipelineTestCase):
         production.event.update_data.assert_called_once()
 
     def test_html_empty_when_not_finished(self):
+        """
+        Regression test: html() used to unconditionally create the
+        per-production webdir even when there was no report to copy and the
+        production wasn't finished/uploaded, cluttering the project webroot
+        just from viewing the project page.
+        """
         with temporary_test_directory() as tmpdir, temporary_test_directory() as webroot:
             pipeline, production = self.make_pipeline(rundir=tmpdir, event_meta={"data": {}})
             production.status = "running"
@@ -359,6 +365,11 @@ class TestAfterCompletionAndHtml(PipelineTestCase):
                 ),
             ):
                 self.assertEqual(pipeline.html(), "")
+
+            webdir = os.path.join(
+                webroot, "results", production.event.name, production.name
+            )
+            self.assertFalse(os.path.exists(webdir))
 
     def test_html_renders_assets_when_finished(self):
         with temporary_test_directory() as tmpdir, temporary_test_directory() as webroot:
