@@ -57,7 +57,7 @@ test = [
 #gwdata = "datafind:main"
 gwdata = "datafind.main:get_data"
 [project.urls]
-"Source code" = "https://git.ligo.org/asimov/asimov-gwdatahelp"
+"Source code" = "https://git.ligo.org/asimov/pipelines/gwdata"
 
 [tool.setuptools]
 packages = [

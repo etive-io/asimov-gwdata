@@ -109,7 +109,7 @@ Project Information
 -------------------
 
 * **License**: MIT
-* **Repository**: https://git.ligo.org/asimov/pipelines/datafind
+* **Repository**: https://git.ligo.org/asimov/pipelines/gwdata
 
 Indices and tables
 ==================

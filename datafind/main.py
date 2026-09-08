@@ -70,7 +70,7 @@ def get_data(settings):  # detectors, start, end, duration, frames):
         settings["data"].remove("frames")
 
     if "calibration" in settings["data"]:
-        source = settings.get("source")
+        source = settings.get("source", {})
         type = source.get("type", None)
         if type == "pesummary":
             # Allow calibration uncertainty envelopes to be extracted from a PESummary metafile.

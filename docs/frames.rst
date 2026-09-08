@@ -13,6 +13,10 @@ We also need to set the ``file length``, which can be either ``32`` or ``4096`` 
     pipeline: gwdata
     file length: 4096
     download:
-      - frames	
+      - frames
 
+.. note::
+   The ``frames`` download type only retrieves public strain data from GWOSC.
+   There is currently no configuration option to download proprietary
+   LIGO/Virgo/KAGRA frame data through this data type.
 

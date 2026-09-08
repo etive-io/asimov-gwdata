@@ -35,7 +35,7 @@ The quickest way to do this is to run
 
 .. code-block:: console
 
-		$ pip install git+https://git.ligo.org/asimov/pipelines/datafind.git
+		$ pip install git+https://git.ligo.org/asimov/pipelines/gwdata.git
 
 You should use the package with care if installing from source; while the master branch should represent stable code, it may contain new or undocumented features, or behave unexpectedly.
 
@@ -49,7 +49,7 @@ First clone a copy of the ``asimov-gwdata`` repository, for example by running
 
 .. code-block:: console
 
-		$ git clone https://git.ligo.org/asimov/pipelines/datafind.git asimov-gwdata
+		$ git clone https://git.ligo.org/asimov/pipelines/gwdata.git asimov-gwdata
 
 Then you can install this repository into your current virtual environment by running
 

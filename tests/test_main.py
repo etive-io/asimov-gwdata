@@ -42,6 +42,33 @@ class TestFramesDispatch(unittest.TestCase):
 
 
 class TestCalibrationDispatch(unittest.TestCase):
+    def test_calibration_defaults_to_local_storage_without_source(self):
+        """
+        Regression test: omitting the ``source`` block entirely for a
+        calibration download used to crash with an AttributeError
+        (``settings.get("source")`` returned None, then ``.get("type")``
+        was called on it unconditionally) even though this is exactly the
+        documented minimal example for local-storage calibration retrieval.
+        """
+        with temporary_test_directory() as tmpdir:
+            settings_path = os.path.join(tmpdir, "settings.yaml")
+            write_settings(
+                settings_path,
+                {
+                    "time": {"start": 1238166018},
+                    "data": ["calibration"],
+                    "locations": {"calibration directory": "/home/cal/archive/"},
+                    "calibration version": "v1",
+                },
+            )
+            with patch("datafind.main.calibration.find_calibrations_on_cit") as mock_find:
+                result = CliRunner().invoke(get_data, ["--settings", settings_path])
+
+            self.assertEqual(result.exit_code, 0, result.output)
+            mock_find.assert_called_once_with(
+                1238166018, "/home/cal/archive/", version="v1"
+            )
+
     def test_calibration_explicit_local_storage(self):
         with temporary_test_directory() as tmpdir:
             settings_path = os.path.join(tmpdir, "settings.yaml")
@@ -207,7 +234,6 @@ class TestCombinedDispatch(unittest.TestCase):
                     "interferometers": ["H1", "L1"],
                     "time": {"start": 1126259462, "end": 1126259478, "duration": 32},
                     "data": ["frames", "calibration"],
-                    "source": {"type": "local storage"},
                     "locations": {"calibration directory": "/home/cal/archive/"},
                     "calibration version": "v1",
                 },
