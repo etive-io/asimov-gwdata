@@ -262,31 +262,85 @@ def get_calibration_from_frame(
     envelope.to_file(output)
 
 
-def get_o3_style_calibration(dir, time):
-    data_llo = glob.glob(os.path.join(f"{dir}", "L1", "*LLO*FinalResults.txt"))
-    times_llo = {
-        int(datum.split("GPSTime_")[1].split("_C0")[0]): datum for datum in data_llo
-    }
+def get_o3_style_calibration(dir, time, interferometers=None):
+    """
+    Find O3-style calibration uncertainty envelopes for H1 and/or L1.
 
-    data_lho = glob.glob(os.path.join(f"{dir}", "H1", "*LHO*FinalResults.txt"))
-    times_lho = {
-        int(datum.split("GPSTime_")[1].split("_C0")[0]): datum for datum in data_lho
-    }
+    Parameters
+    ----------
+    dir : str
+       The base directory to search for calibration envelopes.
+    time : number
+       The GPS time for which the nearest calibration should be returned.
+    interferometers : list, optional
+       Restrict the lookup to these interferometers.
+       Defaults to ``["H1", "L1"]``.
+    """
+    if interferometers is None:
+        interferometers = ["H1", "L1"]
 
-    keys_llo = np.array(list(times_llo.keys()))
-    keys_lho = np.array(list(times_lho.keys()))
-
-    return {
-        "H1": times_lho[keys_lho[np.argmin(np.abs(keys_lho - time))]],
-        "L1": times_llo[keys_llo[np.argmin(np.abs(keys_llo - time))]],
-    }
-
-
-def get_o4_style_calibration(dir, time, version="v1"):
     data = {}
-    for ifo in ["H1", "L1"]:
+
+    if "L1" in interferometers:
+        data_llo = glob.glob(os.path.join(f"{dir}", "L1", "*LLO*FinalResults.txt"))
+        times_llo = {
+            int(datum.split("GPSTime_")[1].split("_C0")[0]): datum for datum in data_llo
+        }
+        if times_llo:
+            keys_llo = np.array(list(times_llo.keys()))
+            data["L1"] = times_llo[keys_llo[np.argmin(np.abs(keys_llo - time))]]
+
+    if "H1" in interferometers:
+        data_lho = glob.glob(os.path.join(f"{dir}", "H1", "*LHO*FinalResults.txt"))
+        times_lho = {
+            int(datum.split("GPSTime_")[1].split("_C0")[0]): datum for datum in data_lho
+        }
+        if times_lho:
+            keys_lho = np.array(list(times_lho.keys()))
+            data["H1"] = times_lho[keys_lho[np.argmin(np.abs(keys_lho - time))]]
+
+    return data
+
+
+def get_o4_style_calibration(dir, time, version="v1", interferometers=None):
+    """
+    Find O4-style calibration uncertainty envelopes for H1 and/or L1.
+
+    Parameters
+    ----------
+    dir : str
+       The base directory to search for calibration envelopes.
+    time : number
+       The GPS time for which the nearest calibration should be returned.
+    version : str or dict
+       The version number to use. Either a single version applied to every
+       requested interferometer, or a dict mapping interferometer to version
+       (e.g. ``{"H1": "v2", "L1": "v1"}``), letting different interferometers
+       use different calibration versions within a single call.
+    interferometers : list, optional
+       Restrict the lookup to these interferometers. Only ``H1`` and ``L1``
+       are meaningful here; any others are ignored (Virgo calibration is
+       retrieved separately, from a frame file, via
+       :func:`get_calibration_from_frame`). Defaults to the keys of
+       ``version`` if it is a dict, otherwise to ``["H1", "L1"]``.
+    """
+    if interferometers is None:
+        if isinstance(version, dict):
+            interferometers = list(version.keys())
+        else:
+            interferometers = ["H1", "L1"]
+
+    data = {}
+    for ifo in interferometers:
+        if ifo not in ("H1", "L1"):
+            continue
         if isinstance(version, dict):
             ifo_version = version.get(ifo)
+            if ifo_version is None:
+                logger.warning(
+                    f"No calibration version specified for {ifo}; skipping."
+                )
+                continue
         else:
             ifo_version = version
         file_list_globbed = glob.glob(
@@ -320,7 +374,8 @@ def find_calibrations_on_cit(time,
                       datafind_host="datafind.igwn.org",
                       virgo_prefix="V1:Hrec_hoft_U00",
                       timestamp_channel=None,
-                      frametype="V1:HoftAR1"
+                      frametype="V1:HoftAR1",
+                      interferometers=None,
                       ):
     """
     Find the calibration file for a given time.
@@ -332,8 +387,12 @@ def find_calibrations_on_cit(time,
     base_dir: str
        The base directory to search for calibration envelopes.
        By default will use the default location.
-    version : str
-       The version number for LIGO (L1 and H1) calibration.
+    version : str or dict
+       The version number for LIGO (L1 and H1) calibration. Either a single
+       version applied to every requested LIGO interferometer, or a dict
+       mapping interferometer to version (e.g. ``{"H1": "v2", "L1": "v1"}``)
+       so that different interferometers can use different versions within
+       a single call, without clobbering each other.
     datafind_host: str
        The URL to use for frame lookup using gw_data_find.
        Defaults to ``datafind.igwn.org``.
@@ -346,7 +405,19 @@ def find_calibrations_on_cit(time,
     frametype : str
        The frametype to use for extracting uncertainty envelopes.
        Defaults to ``V1:HoftAR1``.
+    interferometers : list, optional
+       Restrict the lookup to these interferometers. If not given, defaults
+       to the keys of ``version`` if it is a dict, otherwise to
+       ``["H1", "L1"]`` (Virgo's O2/O3 envelope is only included if ``V1``
+       is explicitly listed here, since O4-era Virgo calibration is
+       retrieved separately, from a frame file, via
+       :func:`get_calibration_from_frame`).
     """
+    if interferometers is None:
+        if isinstance(version, dict):
+            interferometers = list(version.keys())
+        else:
+            interferometers = ["H1", "L1"]
 
     observing_runs = {
         "O1":   [1126623617, 1136649617],
@@ -367,11 +438,12 @@ def find_calibrations_on_cit(time,
         return None
 
     run = identify_run_from_gpstime(time)
+    data = {}
 
     if run == "O1":
         logger.error("Cannot retrieve calibration undertainty envelopes for O1 events")
 
-    if run == "O2":
+    elif run == "O2":
         # This looks like an O2 time
         logger.info("Retrieving O2 calibration envelopes")
         dir = os.path.join(
@@ -386,8 +458,9 @@ def find_calibrations_on_cit(time,
             "C02_reruns",
             "V_calibrationUncertaintyEnvelope_magnitude5p1percent_phase40mraddeg20microsecond.txt",
         )  # NoQA
-        data = get_o3_style_calibration(dir, time)
-        data["V1"] = virgo
+        data = get_o3_style_calibration(dir, time, interferometers=interferometers)
+        if "V1" in interferometers:
+            data["V1"] = virgo
         logger.debug(f"Found envelopes: {data}")
 
     elif run in ("O3a", "O3b"):
@@ -406,8 +479,9 @@ def find_calibrations_on_cit(time,
             "Virgo",
             "V_O3a_calibrationUncertaintyEnvelope_magnitude5percent_phase35milliradians10microseconds.txt",
         )  # NoQA
-        data = get_o3_style_calibration(dir, time)
-        data["V1"] = virgo
+        data = get_o3_style_calibration(dir, time, interferometers=interferometers)
+        if "V1" in interferometers:
+            data["V1"] = virgo
         logger.debug(f"Found envelopes: {data}")
 
     elif run in ("O4a", "O4b", "O4c"):
@@ -417,7 +491,7 @@ def find_calibrations_on_cit(time,
             dir = base_dir
         else:
             dir = os.path.join(os.path.sep, "home", "cal", "public_html", "archive")
-        data = get_o4_style_calibration(dir, time, version)
+        data = get_o4_style_calibration(dir, time, version, interferometers=interferometers)
 
         logger.debug(f"Found envelopes: {data}")
 
@@ -429,13 +503,12 @@ def find_calibrations_on_cit(time,
             dir = base_dir
         else:
             dir = os.path.join(os.path.sep, "home", "cal", "public_html", "archive")
-        data = get_o4_style_calibration(dir, time, version)
+        data = get_o4_style_calibration(dir, time, version, interferometers=interferometers)
 
         logger.debug(f"Found envelopes: {data}")
 
     elif not run:
         # This time is outwith a valid observing run
-        data = {}
         logger.warning("The requested time is not inside a recognised observing run. No calibration envelopes will be returned.")
 
     for ifo, envelope in data.items():
