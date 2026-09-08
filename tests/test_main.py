@@ -66,7 +66,8 @@ class TestCalibrationDispatch(unittest.TestCase):
 
             self.assertEqual(result.exit_code, 0, result.output)
             mock_find.assert_called_once_with(
-                1238166018, "/home/cal/archive/", version="v1"
+                1238166018, "/home/cal/archive/", version="v1",
+                interferometers=["H1", "L1"],
             )
 
     def test_calibration_explicit_local_storage(self):
@@ -85,6 +86,108 @@ class TestCalibrationDispatch(unittest.TestCase):
 
             self.assertEqual(result.exit_code, 0, result.output)
             mock_find.assert_called_once()
+
+    def test_calibration_v1_falls_back_to_frame_when_not_in_archive(self):
+        """
+        A single analysis listing H1 and V1 together should retrieve both
+        without needing a separate frame-based analysis for V1: if the
+        local calibration archive doesn't have a V1 envelope (the O4b+
+        case, where Virgo calibration isn't distributed as a text file),
+        it's automatically retrieved from a frame file instead.
+        """
+        with temporary_test_directory() as tmpdir:
+            settings_path = os.path.join(tmpdir, "settings.yaml")
+            write_settings(
+                settings_path,
+                {
+                    "interferometers": ["H1", "V1"],
+                    "time": {"start": 1400000000},
+                    "data": ["calibration"],
+                    "locations": {"calibration directory": "/home/cal/archive/"},
+                },
+            )
+            with patch(
+                "datafind.main.calibration.find_calibrations_on_cit",
+                return_value={"H1": "/home/cal/archive/H1.txt"},
+            ) as mock_find, patch(
+                "datafind.main.calibration.get_calibration_from_frame"
+            ) as mock_frame:
+                result = CliRunner().invoke(get_data, ["--settings", settings_path])
+
+            self.assertEqual(result.exit_code, 0, result.output)
+            mock_find.assert_called_once_with(
+                1400000000, "/home/cal/archive/", version="v1",
+                interferometers=["H1", "V1"],
+            )
+            mock_frame.assert_called_once()
+            self.assertEqual(mock_frame.call_args.kwargs["ifo"], "V1")
+
+    def test_calibration_v1_fallback_creates_directory_when_archive_lookup_empty(self):
+        """
+        Regression test: an analysis requesting only V1 (or any combination
+        where the local-archive lookup finds nothing at all) used to risk a
+        FileNotFoundError, since find_calibrations_on_cit() only creates
+        "calibration/" as a side effect of copying a *found* envelope into
+        it -- an empty result leaves it never created before the frame
+        fallback tries to write into it.
+        """
+        with temporary_test_directory() as tmpdir:
+            settings_path = os.path.join(tmpdir, "settings.yaml")
+            write_settings(
+                settings_path,
+                {
+                    "interferometers": ["V1"],
+                    "time": {"start": 1400000000},
+                    "data": ["calibration"],
+                    "locations": {"calibration directory": "/home/cal/archive/"},
+                },
+            )
+            original_cwd = os.getcwd()
+            try:
+                os.chdir(tmpdir)
+                with patch(
+                    "datafind.main.calibration.find_calibrations_on_cit",
+                    return_value={},
+                ), patch(
+                    "datafind.main.calibration.get_calibration_from_frame"
+                ) as mock_frame:
+                    result = CliRunner().invoke(get_data, ["--settings", settings_path])
+            finally:
+                os.chdir(original_cwd)
+
+            self.assertEqual(result.exit_code, 0, result.output)
+            mock_frame.assert_called_once()
+            self.assertTrue(os.path.isdir(os.path.join(tmpdir, "calibration")))
+
+    def test_calibration_explicit_local_storage_skips_frame_fallback_for_v1(self):
+        """
+        The frame-based V1 fallback should only kick in for the *default*
+        (unspecified source) behaviour, not when local storage was
+        explicitly requested via ``source: {type: local storage}`` -- that
+        should mean "local storage only, and nothing else".
+        """
+        with temporary_test_directory() as tmpdir:
+            settings_path = os.path.join(tmpdir, "settings.yaml")
+            write_settings(
+                settings_path,
+                {
+                    "interferometers": ["H1", "V1"],
+                    "time": {"start": 1400000000},
+                    "data": ["calibration"],
+                    "source": {"type": "local storage"},
+                    "locations": {"calibration directory": "/home/cal/archive/"},
+                },
+            )
+            with patch(
+                "datafind.main.calibration.find_calibrations_on_cit",
+                return_value={"H1": "/home/cal/archive/H1.txt"},
+            ), patch(
+                "datafind.main.calibration.get_calibration_from_frame"
+            ) as mock_frame:
+                result = CliRunner().invoke(get_data, ["--settings", settings_path])
+
+            self.assertEqual(result.exit_code, 0, result.output)
+            mock_frame.assert_not_called()
 
     def test_calibration_from_pesummary(self):
         with temporary_test_directory() as tmpdir:
