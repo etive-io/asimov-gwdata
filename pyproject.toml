@@ -50,6 +50,7 @@ rift = [
 
 test = [
 	"gwdatafind-server>=1.5.0",
+	"htcondor",
 ]
 
 [project.scripts]

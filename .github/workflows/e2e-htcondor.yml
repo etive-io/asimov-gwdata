@@ -1,0 +1,242 @@
+name: End-to-End Tests (HTCondor)
+
+# Runs asimov-gwdata as an actual asimov pipeline, submitting real HTCondor
+# jobs inside an htcondor/mini container, for each major download type
+# (GWOSC frames, local-storage calibration, PESummary-sourced calibration +
+# PSDs). This is the level below which asimov's own htcondor-tests.yml
+# exercises asimov-gwdata as one step in a much larger PE workflow - this
+# workflow exists so a regression in the gwdata<->asimov integration (e.g.
+# the pipeline's config template, or Pipeline.build_dag/detect_completion)
+# is caught here first, without depending on the asimov repo's own CI.
+#
+# The shared composite actions used below (setup-htcondor, create-submit-user,
+# run-asimov-command, wait-for-files) live in etive-io/actions, which is used
+# across the asimov plugin ecosystem for this same HTCondor CI scaffolding.
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    name: "HTCondor End-to-End Test"
+    runs-on: ubuntu-latest
+    container:
+      image: htcondor/mini:latest
+      options: --privileged
+    defaults:
+      run:
+        shell: bash -el {0}
+
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - uses: etive-io/actions/setup-htcondor@v1
+
+      - name: Install base tools
+        run: |
+          yum install -y sudo git
+
+      - uses: etive-io/actions/create-submit-user@v1
+
+      - name: Ensure submituser can access workspace
+        run: |
+          mkdir -p "$GITHUB_WORKSPACE/test_project"
+          chmod -R a+rwX "$GITHUB_WORKSPACE"
+
+      - name: Set up conda environment
+        uses: conda-incubator/setup-miniconda@v3
+        with:
+          miniconda-version: "latest"
+          auto-activate-base: false
+          python-version: "3.10"
+          activate-environment: asimov
+          channels: conda-forge
+          use-mamba: true
+
+      - name: Install asimov-gwdata (with asimov and HTCondor bindings) from source
+        shell: bash -el {0}
+        run: |
+          git config --global --add safe.directory "${GITHUB_WORKSPACE}"
+          conda activate asimov
+          python -m pip install --upgrade pip
+          python -m pip install --force-reinstall ".[test]"
+          echo "Installed asimov from: $(python -c 'import asimov; print(asimov.__file__)')"
+          echo "Installed gwdata pipeline plugin from: $(python -c 'import datafind.asimov; print(datafind.asimov.__file__)')"
+
+      - name: Set up git
+        run: |
+          su - submituser <<SUBMITUSER
+          set -euo pipefail
+          git config --global init.defaultBranch master
+          git config --global user.email "you@example.com"
+          git config --global user.name "Your Name"
+          SUBMITUSER
+
+      - name: Build synthetic calibration archive fixture
+        run: |
+          for ifo in H1 L1; do
+            dir="/tmp/gwdata-e2e/cal-archive/${ifo}/uncertainty/v1/1400000/1400000000"
+            mkdir -p "$dir"
+            printf "# synthetic calibration uncertainty envelope\n1 1 0 1 1 0 0\n" \
+              > "${dir}/calibration_uncertainty_${ifo}_1400000000.txt"
+          done
+          chmod -R a+rX /tmp/gwdata-e2e
+
+      - name: Build synthetic PESummary metafile fixture
+        uses: etive-io/actions/run-asimov-command@v1
+        with:
+          script: |
+            mkdir -p /tmp/gwdata-e2e
+            python3 -c "
+            from tests.test_fixtures import create_mock_pesummary_metafile
+            create_mock_pesummary_metafile('/tmp/gwdata-e2e/fake_metafile.h5', ifos=('H1', 'L1'))
+            "
+            chmod a+r /tmp/gwdata-e2e/fake_metafile.h5
+
+      - name: Create asimov project
+        uses: etive-io/actions/run-asimov-command@v1
+        with:
+          script: asimov init "Test Project"
+
+      - name: Configure asimov user
+        uses: etive-io/actions/run-asimov-command@v1
+        with:
+          script: asimov configuration update condor/user submituser
+
+      - name: Configure HTCondor settings
+        uses: etive-io/actions/run-asimov-command@v1
+        with:
+          script: |
+            asimov configuration update condor/cache_time 30
+            asimov configuration update condor/cron_minute '*/1'
+
+      - name: Add GW150914 event
+        uses: etive-io/actions/run-asimov-command@v1
+        with:
+          script: asimov apply -f "$GITHUB_WORKSPACE/tests/test_blueprints/gwosc_event.yaml"
+
+      # --- Scenario 1: GWOSC frames -------------------------------------
+      - name: Add and submit GWOSC frames job
+        uses: etive-io/actions/run-asimov-command@v1
+        with:
+          script: |
+            asimov apply -f "$GITHUB_WORKSPACE/tests/test_blueprints/gwosc_frames.yaml" -e GW150914_095045
+            asimov manage build submit
+
+      - name: Wait for frame files
+        uses: etive-io/actions/wait-for-files@v1
+        with:
+          patterns: "H*.gwf"
+          directory: "working/GW150914_095045/get-data-frames/frames"
+          timeout: "300"
+          interval: "15"
+
+      - name: Wait for frame cache file
+        uses: etive-io/actions/wait-for-files@v1
+        with:
+          patterns: "H1.cache"
+          directory: "working/GW150914_095045/get-data-frames/cache"
+          timeout: "60"
+          interval: "10"
+
+      # --- Scenario 2: local-storage calibration --------------------------
+      - name: Add and submit local-storage calibration job
+        uses: etive-io/actions/run-asimov-command@v1
+        with:
+          script: |
+            asimov apply -f "$GITHUB_WORKSPACE/tests/test_blueprints/calibration_local_storage.yaml" -e GW150914_095045
+            asimov manage build submit
+
+      - name: Wait for local-storage calibration files
+        uses: etive-io/actions/wait-for-files@v1
+        with:
+          patterns: "H1.txt L1.txt"
+          directory: "working/GW150914_095045/get-data-calibration-local/calibration"
+          timeout: "120"
+          interval: "10"
+
+      # --- Scenario 3: calibration + PSDs from a PESummary metafile ------
+      - name: Add and submit PESummary calibration+PSDs job
+        uses: etive-io/actions/run-asimov-command@v1
+        with:
+          script: |
+            asimov apply -f "$GITHUB_WORKSPACE/tests/test_blueprints/calibration_psds_pesummary.yaml" -e GW150914_095045
+            asimov manage build submit
+
+      - name: Wait for PESummary-sourced calibration files
+        uses: etive-io/actions/wait-for-files@v1
+        with:
+          patterns: "H1.dat L1.dat"
+          directory: "working/GW150914_095045/get-data-calibration-psds-pesummary/calibration"
+          timeout: "120"
+          interval: "10"
+
+      - name: Wait for PESummary-sourced PSD files
+        uses: etive-io/actions/wait-for-files@v1
+        with:
+          patterns: "H1.dat L1.dat"
+          directory: "working/GW150914_095045/get-data-calibration-psds-pesummary/psds"
+          timeout: "60"
+          interval: "10"
+
+      # --- Verification ---------------------------------------------------
+      - name: Run asimov monitor
+        uses: etive-io/actions/run-asimov-command@v1
+        with:
+          script: asimov monitor
+
+      - name: Verify all three gwdata analyses completed
+        uses: etive-io/actions/run-asimov-command@v1
+        with:
+          # Reads the ledger directly (rather than asimov.monitor_api, which
+          # is only available on much newer asimov than this repo's declared
+          # minimum) so this check works across the range of asimov versions
+          # asimov-gwdata supports.
+          script: |
+            python3 <<'EOF'
+            import sys
+            import yaml
+
+            with open(".asimov/ledger.yml") as f:
+                ledger = yaml.safe_load(f)
+
+            print("Final analysis statuses:")
+            failures = []
+            for event in ledger.get("events", []):
+                for prod_entry in event.get("productions", []):
+                    for name, prod in prod_entry.items():
+                        status = str(prod.get("status", "")).lower()
+                        print(f"  {name}: {status}")
+                        if status not in ("finished", "uploaded"):
+                            failures.append(f"{name}: {status}")
+            if failures:
+                print(f"\nFAIL: {len(failures)} analyses not complete:")
+                for f in failures:
+                    print(f"  - {f}")
+                sys.exit(1)
+            print("\nAll gwdata analyses are complete!")
+            EOF
+
+      - name: Archive testing artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-htcondor-debug
+          path: |
+            .asimov/
+            checkouts/
+            working/
+          retention-days: 5

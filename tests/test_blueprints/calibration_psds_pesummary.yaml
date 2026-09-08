@@ -1,0 +1,10 @@
+kind: analysis
+name: get-data-calibration-psds-pesummary
+pipeline: gwdata
+download:
+  - calibration
+  - psds
+source:
+  type: pesummary
+  location: /tmp/gwdata-e2e/fake_metafile.h5
+  analysis: C01:IMRPhenomXPHM

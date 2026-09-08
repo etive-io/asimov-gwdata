@@ -13,6 +13,9 @@ from contextlib import contextmanager
 from unittest.mock import patch
 from typing import Dict, List, Optional
 
+import numpy as np
+import h5py
+
 
 def create_mock_frame_file(output_path, gps_start=1126259460, duration=4096):
     """
@@ -200,3 +203,70 @@ def get_test_data_path(filename):
     """
     test_dir = Path(__file__).parent
     return str(test_dir / "test_data" / filename)
+
+
+def create_mock_pesummary_metafile(
+    output_path,
+    analysis="C01:IMRPhenomXPHM",
+    ifos=("H1", "L1"),
+    n_frequencies=16,
+):
+    """
+    Create a small synthetic PESummary-style metafile for offline testing.
+
+    This does not use PESummary's own metafile writer (which expects a full
+    summarypages run's worth of inputs); instead it hand-builds just enough
+    HDF5 structure for ``datafind.metafiles.Metafile`` to read - a top-level
+    ``history``/``version`` pair (used to pick a default analysis name when
+    none is given) plus one analysis group containing ``psds`` and
+    ``calibration_envelope`` sub-groups, each with one dataset per detector.
+
+    Parameters
+    ----------
+    output_path : str
+        Where to write the ``.h5`` file.
+    analysis : str, optional
+        The analysis label the data is stored under. Defaults to
+        ``"C01:IMRPhenomXPHM"``, matching the label used throughout the docs
+        and other test fixtures.
+    ifos : sequence of str, optional
+        Detectors to generate PSD/calibration data for. Defaults to
+        ``("H1", "L1")``.
+    n_frequencies : int, optional
+        Number of frequency bins in the synthetic PSD/calibration arrays.
+
+    Returns
+    -------
+    str
+        The path the file was written to.
+    """
+    frequencies = np.linspace(20.0, 1024.0, n_frequencies)
+
+    with h5py.File(output_path, "w") as f:
+        f.create_dataset("history", data=b"synthetic test fixture")
+        f.create_dataset("version", data=b"v1.0.0")
+
+        group = f.create_group(analysis)
+        psds = group.create_group("psds")
+        calibration = group.create_group("calibration_envelope")
+
+        for ifo in ifos:
+            psd_data = np.column_stack(
+                [frequencies, np.ones(n_frequencies) * 1e-46]
+            )
+            psds.create_dataset(ifo, data=psd_data)
+
+            envelope_data = np.column_stack(
+                [
+                    frequencies,
+                    np.ones(n_frequencies),  # median magnitude
+                    np.zeros(n_frequencies),  # median phase
+                    np.ones(n_frequencies) * 0.95,  # 16th percentile magnitude
+                    np.ones(n_frequencies) * -0.05,  # 16th percentile phase
+                    np.ones(n_frequencies) * 1.05,  # 84th percentile magnitude
+                    np.ones(n_frequencies) * 0.05,  # 84th percentile phase
+                ]
+            )
+            calibration.create_dataset(ifo, data=envelope_data)
+
+    return output_path
