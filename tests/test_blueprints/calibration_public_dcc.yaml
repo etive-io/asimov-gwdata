@@ -1,0 +1,10 @@
+kind: analysis
+name: get-data-calibration-public-dcc
+pipeline: gwdata
+# Unlike calibration_local_storage.yaml, this doesn't need to override the
+# event's real (O1-era) time -- the public DCC archive covers O1 through
+# O4b, so GW150914's actual event time works directly.
+download:
+  - calibration
+source:
+  type: public

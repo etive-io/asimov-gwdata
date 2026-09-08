@@ -15,11 +15,11 @@ Runs the test suite for asimov-gwdata, including tests with the MockGWDataFindSe
 
 **Jobs:**
 
-1. **test** - Runs basic unit tests on Python 3.9, 3.10, 3.11, and 3.12
+1. **test** - Runs basic unit tests on Python 3.12 and 3.13
    - Tests run without requiring external services
    - Uses mock fixtures for offline testing
 
-2. **test-with-mock-server** - Runs tests with MockGWDataFindServer on Python 3.10, 3.11, and 3.12
+2. **test-with-mock-server** - Runs tests with MockGWDataFindServer on Python 3.12 and 3.13
    - Starts MockGWDataFindServer as a background service
    - Creates test frame files
    - Sets `GWDATAFIND_SERVER=http://localhost:8765`

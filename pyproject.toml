@@ -24,7 +24,7 @@ classifiers = [
 	"License :: OSI Approved :: MIT License",
 	"Operating System :: OS Independent"
 ]
-requires-python = ">=3.7"
+requires-python = ">=3.12"
 dependencies = [
         "gwosc",
 	"asimov>=0.7.0",
