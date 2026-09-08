@@ -14,6 +14,8 @@ import numpy as np
 from gwpy.timeseries import TimeSeries, TimeSeriesDict
 from gwpy.io.gwf import get_channel_names
 
+from .plotting import plot_spectrogram
+
 logger = logging.getLogger("gwdata")
 
 
@@ -36,6 +38,27 @@ class Frame:
             return True
         else:
             return False
+
+    def spectrogram(self, channel=None, time=None):
+
+        channels = get_channel_names(self.framefile)
+
+        if time is None:
+            data = TimeSeries.read(self.framefile, channel=channel)
+            time = data.times.value[len(data)//2]
+
+        spec_f = None
+        if channel is None:
+            for channel in channels:
+                try:
+                    spec_f = plot_spectrogram(self.framefile, channel, time=time)
+                    break
+                except Exception as e:
+                    logger.warning(f"Failed to plot spectrogram for channel {channel}: {e}")
+        else:
+            spec_f = plot_spectrogram(self.framefile, channel, time=time)
+
+        return spec_f
 
     def nearest_calibration(
         self, time, channel="V1:Hrec_hoft_U00_lastWriteGPS"

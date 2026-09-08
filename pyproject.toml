@@ -36,6 +36,9 @@ dependencies = [
 	"igwn-auth-utils",
 	"requests-pelican",
 	"requests-scitokens >= 0.1.0",
+	"gwpy",
+	"matplotlib",
+	"otter-report",
 ]
 
 [project.optional-dependencies]
@@ -46,10 +49,6 @@ docs = [
 
 rift = [
      "rift"
-]
-
-test = [
-	"gwdatafind-server>=1.5.0",
 ]
 
 [project.scripts]

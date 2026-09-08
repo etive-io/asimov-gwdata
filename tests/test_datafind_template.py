@@ -124,5 +124,47 @@ class TestDatafindTemplate(unittest.TestCase):
         self.assertEqual(rendered["calibration version"], "v1")
 
 
+class TestSourceNilGuard(unittest.TestCase):
+    """
+    Regression tests for a template crash where a blueprint setting
+    ``source:`` with no value (renders as Liquid ``nil``) made
+    ``production.meta['source'] contains 'frames'`` raise, since Liquid's
+    ``contains`` can't be called on nil.
+    """
+
+    def test_null_source_does_not_raise(self):
+        rendered = render(
+            {
+                "event time": 1126259462,
+                "source": None,
+            }
+        )
+        self.assertNotIn("source", rendered)
+
+    def test_missing_source_does_not_raise(self):
+        rendered = render({"event time": 1126259462})
+        self.assertNotIn("source", rendered)
+
+    def test_source_with_frames_still_renders(self):
+        rendered = render(
+            {
+                "event time": 1126259462,
+                "source": {"frames": "osdf", "type": "frame"},
+            }
+        )
+        self.assertEqual(rendered["source"]["frames"], "osdf")
+        self.assertEqual(rendered["source"]["type"], "frame")
+
+    def test_source_without_frames_still_renders(self):
+        rendered = render(
+            {
+                "event time": 1126259462,
+                "source": {"type": "pesummary", "location": "fake.h5"},
+            }
+        )
+        self.assertNotIn("frames", rendered["source"])
+        self.assertEqual(rendered["source"]["type"], "pesummary")
+
+
 if __name__ == "__main__":
     unittest.main()
