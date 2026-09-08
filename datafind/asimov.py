@@ -153,8 +153,8 @@ class Pipeline(asimov.pipeline.Pipeline):
         """
         outputs = {}
         settings = self.production.meta
-        if os.path.exists(os.path.join(self.production.rundir, "frames")) and ("frames" in settings.get("download", {})):
-            results_dir = glob.glob(os.path.join(self.production.rundir, "frames", "*"))
+        if os.path.exists(os.path.join(self.production.rundir, "frames")) and ("frames" in settings.get("download", [])):
+            results_dir = sorted(glob.glob(os.path.join(self.production.rundir, "frames", "*")))
             frames = {}
 
             for frame in results_dir:
@@ -171,7 +171,7 @@ class Pipeline(asimov.pipeline.Pipeline):
 
 
         if os.path.exists(os.path.join(self.production.rundir, "cache")) and (
-            "frames" in settings.get("download", {})
+            "frames" in settings.get("download", [])
         ):
             results_dir = glob.glob(os.path.join(self.production.rundir, "cache", "*"))
             cache = {}
