@@ -122,6 +122,43 @@ class TestCalibrationDispatch(unittest.TestCase):
             mock_frame.assert_called_once()
             self.assertEqual(mock_frame.call_args.kwargs["ifo"], "V1")
 
+    def test_calibration_v1_fallback_creates_directory_when_archive_lookup_empty(self):
+        """
+        Regression test: an analysis requesting only V1 (or any combination
+        where the local-archive lookup finds nothing at all) used to risk a
+        FileNotFoundError, since find_calibrations_on_cit() only creates
+        "calibration/" as a side effect of copying a *found* envelope into
+        it -- an empty result leaves it never created before the frame
+        fallback tries to write into it.
+        """
+        with temporary_test_directory() as tmpdir:
+            settings_path = os.path.join(tmpdir, "settings.yaml")
+            write_settings(
+                settings_path,
+                {
+                    "interferometers": ["V1"],
+                    "time": {"start": 1400000000},
+                    "data": ["calibration"],
+                    "locations": {"calibration directory": "/home/cal/archive/"},
+                },
+            )
+            original_cwd = os.getcwd()
+            try:
+                os.chdir(tmpdir)
+                with patch(
+                    "datafind.main.calibration.find_calibrations_on_cit",
+                    return_value={},
+                ), patch(
+                    "datafind.main.calibration.get_calibration_from_frame"
+                ) as mock_frame:
+                    result = CliRunner().invoke(get_data, ["--settings", settings_path])
+            finally:
+                os.chdir(original_cwd)
+
+            self.assertEqual(result.exit_code, 0, result.output)
+            mock_frame.assert_called_once()
+            self.assertTrue(os.path.isdir(os.path.join(tmpdir, "calibration")))
+
     def test_calibration_explicit_local_storage_skips_frame_fallback_for_v1(self):
         """
         The frame-based V1 fallback should only kick in for the *default*

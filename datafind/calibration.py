@@ -441,7 +441,7 @@ def find_calibrations_on_cit(time,
     data = {}
 
     if run == "O1":
-        logger.error("Cannot retrieve calibration undertainty envelopes for O1 events")
+        logger.error("Cannot retrieve calibration uncertainty envelopes for O1 events")
 
     elif run == "O2":
         # This looks like an O2 time

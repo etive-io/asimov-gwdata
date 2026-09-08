@@ -70,6 +70,11 @@ def get_data(settings):  # detectors, start, end, duration, frames):
             )
 
             if ("V1" in lookup_ifos) and ("V1" not in found) and (type != "local storage"):
+                # find_calibrations_on_cit() only creates "calibration/" as
+                # a side effect of copying a *found* envelope into it, so if
+                # the local archive lookup came back empty (e.g. this
+                # analysis only wanted V1) the directory may not exist yet.
+                os.makedirs("calibration", exist_ok=True)
                 calibration.get_calibration_from_frame(
                     ifo="V1",
                     prefix=settings.get("virgo prefix", "V1:Hrec_hoft_U00"),
