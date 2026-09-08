@@ -1,20 +1,15 @@
-import requests
 import shutil
 import os
 import glob
-import re
 
 import yaml
-from contextlib import contextmanager
-from pathlib import Path
-
-import numpy as np
-
 
 from pesummary.io import read
 import click
 
 import logging
+
+from asimov.utils import set_directory
 
 from .metafiles import Metafile
 from . import calibration
@@ -22,37 +17,6 @@ from . import calibration
 from .frames import get_data_frames_gwosc
 
 logger = logging.getLogger("gwdata")
-
-@contextmanager
-def set_directory(path: (Path, str)):
-    """
-    Change to a different directory for the duration of the context.
-
-    Args:
-        path (Path): The path to the cwd
-
-    Yields:
-        None
-    """
-
-    origin = Path().absolute()
-    try:
-        logger.info(f"Working temporarily in {path}")
-        os.chdir(path)
-        yield
-    finally:
-        os.chdir(origin)
-        logger.info(f"Now working in {origin} again")
-
-
-def download_file(url, directory="frames"):
-    os.makedirs(directory, exist_ok=True)
-    local_filename = url.split("/")[-1]
-    with requests.get(url, stream=True) as r:
-        with open(os.path.join(directory, local_filename), "wb") as f:
-            shutil.copyfileobj(r.raw, f)
-
-    return local_filename
 
 @click.command()
 @click.option("--settings")
@@ -165,17 +129,3 @@ def get_pesummary(components, settings):
             for ifo, psd in analysis_data.items():
                 with set_directory("psds"):
                     psd.save_to_file(f"{ifo}.dat", delimiter="\t")
-
-
-
-
-def extract_psd_files_from_metafile(metafile, dataset=None):
-    """
-    Extract the PSD files from the PESummary metafile, and save them
-    in txt format as expected by the majority of pipelines.
-    """
-    output_dictionary = {}
-    with h5py.File(metafile) as metafile_handle:
-        for ifo in metafile_handle[dataset]["psds"]:
-            output_dictionary[ifo] = np.array(metafile_handle[dataset]["psds"][ifo])
-    return output_dictionary
