@@ -93,7 +93,7 @@ jobs:
             printf "# synthetic calibration uncertainty envelope\n1 1 0 1 1 0 0\n" \
               > "${dir}/calibration_uncertainty_${ifo}_1400000000.txt"
           done
-          chmod -R a+rX /tmp/gwdata-e2e
+          chmod -R a+rwX /tmp/gwdata-e2e
 
       - name: Build synthetic PESummary metafile fixture
         uses: etive-io/actions/run-asimov-command@v1

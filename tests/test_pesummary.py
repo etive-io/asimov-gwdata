@@ -53,6 +53,12 @@ def setUpModule():
         except Exception as e:
             print(f"\nWarning: Could not download test data: {e}")
             print("Tests requiring this file will be skipped.")
+            # urlretrieve writes directly to the destination and leaves a
+            # truncated file behind on a mid-download failure; remove it so
+            # the exists() checks in setUp() correctly treat this as "not
+            # available" and skip, instead of handing a corrupt file to h5py.
+            if os.path.exists(TEST_DATA_FILE):
+                os.remove(TEST_DATA_FILE)
 
 
 class TestPSDExtraction(unittest.TestCase):

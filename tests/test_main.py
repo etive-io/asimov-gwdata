@@ -80,8 +80,15 @@ class TestCalibrationDispatch(unittest.TestCase):
             fake_metafile_cm.__enter__.return_value = fake_metafile
             fake_metafile_cm.__exit__.return_value = False
 
-            with patch("datafind.main.Metafile", return_value=fake_metafile_cm) as mock_meta_cls:
-                result = CliRunner().invoke(get_data, ["--settings", settings_path])
+            original_cwd = os.getcwd()
+            try:
+                os.chdir(tmpdir)
+                with patch(
+                    "datafind.main.Metafile", return_value=fake_metafile_cm
+                ) as mock_meta_cls:
+                    result = CliRunner().invoke(get_data, ["--settings", settings_path])
+            finally:
+                os.chdir(original_cwd)
 
             self.assertEqual(result.exit_code, 0, result.output)
             mock_meta_cls.assert_called_once_with("fake.h5")
@@ -133,18 +140,21 @@ class TestPosteriorAndPsdsDispatch(unittest.TestCase):
                     },
                 },
             )
-            with patch("datafind.main.read") as mock_read:
-                mock_read.return_value = MagicMock()
-                result = CliRunner().invoke(
-                    get_data, ["--settings", settings_path], catch_exceptions=False
-                )
+            original_cwd = os.getcwd()
+            try:
+                os.chdir(tmpdir)
+                with patch("datafind.main.read") as mock_read:
+                    mock_read.return_value = MagicMock()
+                    result = CliRunner().invoke(
+                        get_data, ["--settings", settings_path], catch_exceptions=False
+                    )
+            finally:
+                os.chdir(original_cwd)
 
             self.assertEqual(result.exit_code, 0, result.output)
             self.assertTrue(
-                os.path.exists(os.path.join(os.getcwd(), "posterior", "metafile.h5"))
+                os.path.exists(os.path.join(tmpdir, "posterior", "metafile.h5"))
             )
-            os.remove(os.path.join(os.getcwd(), "posterior", "metafile.h5"))
-            os.rmdir(os.path.join(os.getcwd(), "posterior"))
 
     def test_psds_only(self):
         with temporary_test_directory() as tmpdir:
@@ -167,8 +177,13 @@ class TestPosteriorAndPsdsDispatch(unittest.TestCase):
             fake_metafile_cm.__enter__.return_value = fake_metafile
             fake_metafile_cm.__exit__.return_value = False
 
-            with patch("datafind.main.Metafile", return_value=fake_metafile_cm):
-                result = CliRunner().invoke(get_data, ["--settings", settings_path])
+            original_cwd = os.getcwd()
+            try:
+                os.chdir(tmpdir)
+                with patch("datafind.main.Metafile", return_value=fake_metafile_cm):
+                    result = CliRunner().invoke(get_data, ["--settings", settings_path])
+            finally:
+                os.chdir(original_cwd)
 
             self.assertEqual(result.exit_code, 0, result.output)
             fake_metafile.psd.assert_called_once_with("C01:IMRPhenomXPHM")
