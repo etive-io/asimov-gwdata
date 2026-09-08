@@ -129,6 +129,28 @@ jobs:
           script: asimov apply -f "$GITHUB_WORKSPACE/tests/test_blueprints/gwosc_event.yaml"
 
       # --- Scenario 1: GWOSC frames -------------------------------------
+      # HTCondor execute-slot jobs in this container have no network/DNS
+      # access (the same constraint asimov-cogwheel's e2e hit reaching
+      # gwosc.org from inside a condor job) -- so pre-fetch the real
+      # GW150914 H1/L1 frame here, in a plain script step with working
+      # network, directly into the rundir the condor job below will use.
+      # get_data_frames_gwosc() reuses an already-present frame covering the
+      # requested window instead of re-querying GWOSC, so the (network-dead)
+      # condor job picks this up instead of trying to download it itself.
+      # Values mirror gwosc_frames.yaml ("file length: 32") and
+      # gwosc_event.yaml ("event time: 1126259462.391") exactly -- keep them
+      # in sync if either blueprint changes.
+      - name: Pre-fetch the real GWOSC frame (condor jobs have no network)
+        uses: etive-io/actions/run-asimov-command@v1
+        with:
+          script: |
+            mkdir -p working/GW150914_095045/get-data-frames
+            cd working/GW150914_095045/get-data-frames
+            python3 -c "
+            from datafind.frames import get_data_frames_gwosc
+            get_data_frames_gwosc(['H1', 'L1'], 1126259461.391, 1126259463.391, 32)
+            "
+
       - name: Add and submit GWOSC frames job
         uses: etive-io/actions/run-asimov-command@v1
         with:

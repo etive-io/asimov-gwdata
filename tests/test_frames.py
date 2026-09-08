@@ -117,6 +117,37 @@ class TestLIGOFramesWithMocks(unittest.TestCase):
             finally:
                 os.chdir(original_dir)
 
+    def test_gwosc_frames_reuses_cached_frame_without_network(self):
+        """
+        Regression test: an already-downloaded frame covering the requested
+        window should be reused instead of re-querying GWOSC - this is what
+        lets an HTCondor job with no network access of its own pick up a
+        frame that was pre-fetched outside the job.
+        """
+        with patch('datafind.frames.get_urls') as mock_get_urls, \
+             patch('datafind.frames.download_file') as mock_download, \
+             temporary_test_directory() as tmpdir:
+
+            original_dir = os.getcwd()
+            try:
+                os.chdir(tmpdir)
+                os.makedirs("frames")
+                open(os.path.join("frames", "H-H1_GWOSC_16KHZ_R1-1126259447-32.gwf"), "w").close()
+
+                urls, files = datafind.frames.get_data_frames_gwosc(
+                    detectors=['H1'],
+                    start=1126259461.391,
+                    end=1126259463.391,
+                    duration=32
+                )
+
+                self.assertEqual(files['H1'], ['H-H1_GWOSC_16KHZ_R1-1126259447-32.gwf'])
+                self.assertEqual(urls['H1'], [])
+                mock_get_urls.assert_not_called()
+                mock_download.assert_not_called()
+            finally:
+                os.chdir(original_dir)
+
 
 class TestLIGOFrames(unittest.TestCase):
     """Legacy tests that require actual network access - kept for integration testing."""
