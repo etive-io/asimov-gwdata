@@ -144,8 +144,6 @@ def get_pesummary(components, settings):
         if component == "posterior":
             os.makedirs("posterior", exist_ok=True)
             shutil.copy(location, os.path.join("posterior", "metafile.h5"))
-            # analysis_data = data.samples_dict[analysis]
-            # analysis_data.write(package="gw", file_format="dat", filename="posterior/posterior_samples.dat")
 
         if component == "psds":
             os.makedirs("psds", exist_ok=True)
