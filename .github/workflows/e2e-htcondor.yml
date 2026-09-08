@@ -85,26 +85,32 @@ jobs:
           git config --global user.name "Your Name"
           SUBMITUSER
 
+      # Both fixtures below live under $GITHUB_WORKSPACE rather than /tmp:
+      # HTCondor execute-slot jobs in this container get a private /tmp
+      # (confirmed by the local-storage calibration job below finding
+      # nothing at a /tmp fixture path that plain, non-condor steps could
+      # read fine), so anything a condor job needs to read back has to live
+      # somewhere shared instead.
       - name: Build synthetic calibration archive fixture
         run: |
           for ifo in H1 L1; do
-            dir="/tmp/gwdata-e2e/cal-archive/${ifo}/uncertainty/v1/1400000/1400000000"
+            dir="e2e-fixtures/cal-archive/${ifo}/uncertainty/v1/1400000/1400000000"
             mkdir -p "$dir"
             printf "# synthetic calibration uncertainty envelope\n1 1 0 1 1 0 0\n" \
               > "${dir}/calibration_uncertainty_${ifo}_1400000000.txt"
           done
-          chmod -R a+rwX /tmp/gwdata-e2e
+          chmod -R a+rwX e2e-fixtures
 
       - name: Build synthetic PESummary metafile fixture
         uses: etive-io/actions/run-asimov-command@v1
         with:
           script: |
-            mkdir -p /tmp/gwdata-e2e
+            mkdir -p e2e-fixtures
             python3 -c "
             from tests.test_fixtures import create_mock_pesummary_metafile
-            create_mock_pesummary_metafile('/tmp/gwdata-e2e/fake_metafile.h5', ifos=('H1', 'L1'))
+            create_mock_pesummary_metafile('e2e-fixtures/fake_metafile.h5', ifos=('H1', 'L1'))
             "
-            chmod a+r /tmp/gwdata-e2e/fake_metafile.h5
+            chmod a+r e2e-fixtures/fake_metafile.h5
 
       - name: Create asimov project
         uses: etive-io/actions/run-asimov-command@v1
@@ -191,11 +197,17 @@ jobs:
           interval: "10"
 
       # --- Scenario 2: local-storage calibration --------------------------
+      # The blueprint's calibration directory is a placeholder (see the
+      # comment in the blueprint file itself) - substitute in the actual
+      # absolute path to the fixture built above before applying it.
       - name: Add and submit local-storage calibration job
         uses: etive-io/actions/run-asimov-command@v1
         with:
           script: |
-            asimov apply -f "$GITHUB_WORKSPACE/tests/test_blueprints/calibration_local_storage.yaml" -e GW150914_095045
+            sed "s|__E2E_FIXTURES_DIR__|$GITHUB_WORKSPACE/e2e-fixtures|g" \
+              "$GITHUB_WORKSPACE/tests/test_blueprints/calibration_local_storage.yaml" \
+              > /tmp/calibration_local_storage.yaml
+            asimov apply -f /tmp/calibration_local_storage.yaml -e GW150914_095045
             asimov manage build submit
 
       - name: Wait for local-storage calibration files
@@ -207,11 +219,15 @@ jobs:
           interval: "10"
 
       # --- Scenario 3: calibration + PSDs from a PESummary metafile ------
+      # Same placeholder substitution as scenario 2, for the metafile path.
       - name: Add and submit PESummary calibration+PSDs job
         uses: etive-io/actions/run-asimov-command@v1
         with:
           script: |
-            asimov apply -f "$GITHUB_WORKSPACE/tests/test_blueprints/calibration_psds_pesummary.yaml" -e GW150914_095045
+            sed "s|__E2E_FIXTURES_DIR__|$GITHUB_WORKSPACE/e2e-fixtures|g" \
+              "$GITHUB_WORKSPACE/tests/test_blueprints/calibration_psds_pesummary.yaml" \
+              > /tmp/calibration_psds_pesummary.yaml
+            asimov apply -f /tmp/calibration_psds_pesummary.yaml -e GW150914_095045
             asimov manage build submit
 
       - name: Wait for PESummary-sourced calibration files

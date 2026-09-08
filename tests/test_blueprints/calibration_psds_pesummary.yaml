@@ -6,5 +6,9 @@ download:
   - psds
 source:
   type: pesummary
-  location: /tmp/gwdata-e2e/fake_metafile.h5
+  # Substituted at apply-time (see e2e-htcondor.yml) with an absolute path
+  # under $GITHUB_WORKSPACE - HTCondor execute-slot jobs in this container
+  # get a private /tmp, so a fixture placed there is invisible to the job
+  # that needs to read it back.
+  location: __E2E_FIXTURES_DIR__/fake_metafile.h5
   analysis: C01:IMRPhenomXPHM
