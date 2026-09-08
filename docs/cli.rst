@@ -14,6 +14,20 @@ The main command-line tool for downloading gravitational wave data.
    :prog: gwdata
    :nested: full
 
+asimov gw Commands
+-------------------
+
+``asimov-gwdata`` also registers a ``gw`` command group with asimov itself
+(via the ``asimov.commands`` plugin hook), providing higher-level project
+setup and event/analysis discovery on top of the `asimov/data
+<https://git.ligo.org/asimov/data>`_ blueprint repository. This repository
+is cloned to ``~/.asimov/gwdata/asimov-data`` on first use; set
+``ASIMOV_DATA_PATH`` to point at a different checkout instead.
+
+.. click:: datafind.cli:gw
+   :prog: asimov gw
+   :nested: full
+
 Usage Examples
 --------------
 
