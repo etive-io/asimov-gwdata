@@ -1,13 +1,12 @@
-import importlib
+import importlib.resources
 import os
-import configparser
 import glob
 import pprint
 
 import asimov.pipeline
 
 from asimov import config
-import htcondor
+from asimov.scheduler import JobDescription
 from asimov.utils import set_directory
 
 
@@ -17,8 +16,7 @@ class Pipeline(asimov.pipeline.Pipeline):
     """
 
     name = "gwdata"
-    with importlib.resources.path("datafind", "datafind_template.yml") as template_file:
-        config_template = template_file
+    config_template = importlib.resources.files("datafind").joinpath("datafind_template.yml")
     _pipeline_command = "gwdata"
 
     def _substitute_locations_in_config(self):
@@ -66,38 +64,46 @@ class Pipeline(asimov.pipeline.Pipeline):
         full_command = executable + " " + " ".join(command)
         self.logger.info(full_command)
 
-        description = {
-            "executable": f"{executable}",
-            "arguments": f"{' '.join(command)}",
-            "output": f"{name}.out",
-            "error": f"{name}.err",
-            "log": f"{name}.log",
-            "request_disk": self.production.meta.get("scheduler", {}).get("request disk", "1024MB"),
-            "request_memory": self.production.meta.get("scheduler", {}).get("request memory", "1024MB"),
+        job_kwargs = {
             "batch_name": f"gwdata/{name}",
             "+flock_local": "True",
-            "+DESIRED_Sites": htcondor.classad.quote("none"),
-            "use_oauth_services": "scitokens",
+            "+DESIRED_Sites": '"none"',
             "environment": "BEARER_TOKEN_FILE=$$(CondorScratchDir)/.condor_creds/scitokens.use",
         }
+
+        source = self.production.meta.get("source", {})
+        if (source.get("type") == "frame") or (source.get("frames") == "osdf"):
+            job_kwargs["use_oauth_services"] = "scitokens"
 
         accounting_group = self.production.meta.get("scheduler", {}).get(
             "accounting group", None
         )
 
         if accounting_group:
-            description["accounting_group_user"] = config.get("condor", "user")
-            description["accounting_group"] = accounting_group
+            job_kwargs["accounting_group_user"] = config.get("condor", "user")
+            job_kwargs["accounting_group"] = accounting_group
         else:
             self.logger.warning(
                 "This job does not supply any accounting information, which may prevent it running on some clusters."
             )
 
-        job = htcondor.Submit(description)
+        job = JobDescription(
+            executable=executable,
+            arguments=" ".join(command),
+            output=f"{name}.out",
+            error=f"{name}.err",
+            log=f"{name}.log",
+            memory=self.production.meta.get("scheduler", {}).get("request memory", "1024MB"),
+            disk=self.production.meta.get("scheduler", {}).get("request disk", "1024MB"),
+            **job_kwargs,
+        )
+
         os.makedirs(self.production.rundir, exist_ok=True)
         with set_directory(self.production.rundir):
             with open(f"{name}.sub", "w") as subfile:
-                subfile.write(job.__str__())
+                subfile.write(
+                    "\n".join(f"{key} = {value}" for key, value in job.to_htcondor().items())
+                )
 
             full_command = f"""#! /bin/bash
 { full_command }
@@ -107,16 +113,8 @@ class Pipeline(asimov.pipeline.Pipeline):
                 bashfile.write(str(full_command))
 
         with set_directory(self.production.rundir):
-            try:
-                schedulers = htcondor.Collector().locate(
-                    htcondor.DaemonTypes.Schedd, config.get("condor", "scheduler")
-                )
-            except configparser.NoOptionError:
-                schedulers = htcondor.Collector().locate(htcondor.DaemonTypes.Schedd)
-            schedd = htcondor.Schedd(schedulers)
-            with schedd.transaction() as txn:
-                cluster_id = job.queue(txn)
-                self.logger.info("Submitted to htcondor job queue.")
+            cluster_id = self.scheduler.submit(job)
+            self.logger.info(f"Submitted {cluster_id} to the job queue.")
 
         self.production.job_id = int(cluster_id)
         self.clusterid = cluster_id
@@ -155,13 +153,15 @@ class Pipeline(asimov.pipeline.Pipeline):
         """
         outputs = {}
         settings = self.production.meta
-        if os.path.exists(os.path.join(self.production.rundir, "frames")) and ("frames" in settings.get("download", {})):
-            results_dir = glob.glob(os.path.join(self.production.rundir, "frames", "*"))
+        if os.path.exists(os.path.join(self.production.rundir, "frames")) and ("frames" in settings.get("download", [])):
+            results_dir = sorted(glob.glob(os.path.join(self.production.rundir, "frames", "*")))
             frames = {}
 
             for frame in results_dir:
                 ifo = frame.split("/")[-1].split("_")[0].split("-")[0]+"1"
-                frames[ifo] = frame
+                if ifo not in frames:
+                    frames[ifo] = []
+                frames[ifo].append(frame)
 
             outputs["frames"] = frames
 
@@ -170,7 +170,9 @@ class Pipeline(asimov.pipeline.Pipeline):
             self.production.event.meta["data"]["data files"] = c
 
 
-        if os.path.exists(os.path.join(self.production.rundir, "cache")):
+        if os.path.exists(os.path.join(self.production.rundir, "cache")) and (
+            "frames" in settings.get("download", [])
+        ):
             results_dir = glob.glob(os.path.join(self.production.rundir, "cache", "*"))
             cache = {}
 
