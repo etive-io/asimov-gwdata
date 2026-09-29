@@ -75,6 +75,32 @@ Or to force local storage to be used:
 		download:
 		  - calibration
 
+Calibration Uncertainty from the Public LIGO DCC
+------------------------------------------------
+
+Calibration uncertainty envelopes for LIGO Hanford and Livingston (O1-O4b) and Virgo (O2-O3) are also published on public LIGO DCC pages, and don't require IGWN credentials or access to CIT filesystems to retrieve.
+
+To use these, set the source type to ``public``:
+
+.. code-block:: yaml
+
+		kind: analysis
+		name: get-data
+		pipeline: gwdata
+		source:
+		  type: public
+		download:
+		  - calibration
+
+``asimov-gwdata`` identifies the observing run from the analysis's GPS time, downloads the corresponding archive from the DCC (`O1-O3 <https://dcc.ligo.org/LIGO-T2100313/public>`_, `ER16/O4a/O4b <https://dcc.ligo.org/LIGO-T2500288/public>`_), and extracts the nearest envelope for each requested interferometer. Downloaded archives are cached under ``calibration/.dcc_archives`` so repeated runs don't re-download them.
+
+Coverage is limited to what the DCC actually publishes:
+
+* **H1, L1**: O1 through O4b.
+* **V1**: O2 and O3 only. From O4 onward Virgo's envelope is distributed embedded in frame files instead -- use ``source: {type: frame}`` for those.
+
+A GPS time outside O1-O4b, or a request for V1 outside O2/O3, logs a warning and simply omits that interferometer rather than raising, since a partial result (e.g. H1+L1 with no V1) is usually still useful for downstream pipelines.
+
 Calibration Uncertainty from PESummary Metafiles
 ================================================
 

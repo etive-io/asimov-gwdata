@@ -6,6 +6,7 @@ import os
 import glob
 import re
 import shutil
+import tarfile
 
 import click
 
@@ -17,6 +18,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from .frames import Frame, get_data_frames_private
+from .utils import download_file
 
 
 logger = logging.getLogger("gwdata")
@@ -311,6 +313,196 @@ def get_o4_style_calibration(dir, time, version="v1"):
             times = np.array(list(files_by_time.keys())) - time
             data_file = list(files_by_time.items())[np.argmin(np.abs(times))]
             data[ifo] = data_file[1]
+    return data
+
+
+# Public LIGO/Virgo calibration uncertainty envelope archives, from
+# https://dcc.ligo.org/LIGO-T2100313/public (O1-O3) and
+# https://dcc.ligo.org/LIGO-T2500288/public (ER16, O4a, O4b). The DCC path
+# segment before the document number encodes an internal document ID and
+# isn't derivable from the document number itself, and the version segment
+# increments whenever the document is revised -- if a download starts
+# 404ing, check the relevant DCC page above for a new version and update
+# these URLs.
+DCC_LIGO_ARCHIVES = {
+    "O1": "https://dcc.ligo.org/public/0177/T2100313/003/LIGO_O1_cal_uncertainty.tgz",
+    "O2": "https://dcc.ligo.org/public/0177/T2100313/003/LIGO_O2_cal_uncertainty.tgz",
+    "O3a": "https://dcc.ligo.org/public/0177/T2100313/003/LIGO_O3_cal_uncertainty.tgz",
+    "O3b": "https://dcc.ligo.org/public/0177/T2100313/003/LIGO_O3_cal_uncertainty.tgz",
+    "ER16": "https://dcc.ligo.org/public/0202/T2500288/005/LIGO_ER16_cal_uncertainty.tgz",
+    "O4a": "https://dcc.ligo.org/public/0202/T2500288/005/LIGO_O4a_cal_uncertainty.tgz",
+    "O4b": "https://dcc.ligo.org/public/0202/T2500288/005/LIGO_O4b_cal_uncertainty.tgz",
+}
+
+# Virgo is only distributed through the public DCC as a single static
+# envelope per run (O2, O3 -- O3a and O3b share one archive with one file
+# each). From O4 onward Virgo's uncertainty is embedded in frame files
+# instead (see get_calibration_from_frame).
+DCC_VIRGO_ARCHIVES = {
+    "O2": "https://dcc.ligo.org/public/0177/T2100313/003/Virgo_O2_cal_uncertainty.tgz",
+    "O3a": "https://dcc.ligo.org/public/0177/T2100313/003/Virgo_O3_cal_uncertainty.tgz",
+    "O3b": "https://dcc.ligo.org/public/0177/T2100313/003/Virgo_O3_cal_uncertainty.tgz",
+}
+
+# GPS time ranges covered by the two public DCC documents above. Kept
+# separate from find_calibrations_on_cit's own observing-run table below:
+# that one also spans ER15/O4c, which the public DCC doesn't (yet)
+# distribute, and duplicating the shared ranges here is simpler than
+# threading a "public" mode through the existing lookup ladder.
+DCC_OBSERVING_RUNS = {
+    # O1's start here is the true GWOSC/O1 run boundary (2015-09-12), not
+    # the later 1126623617 used by find_calibrations_on_cit's own table --
+    # that later value excludes GW150914 (1126259462), but the real O1 DCC
+    # archive does contain hourly files back to the actual run start (the
+    # earliest sampled during development was 1126417277), so there's no
+    # reason to exclude it here too.
+    "O1":   (1126051217, 1137254417),
+    "O2":   (1164556817, 1187733618),
+    "O3a":  (1238166018, 1253977218),
+    "O3b":  (1256655618, 1269363618),
+    "ER16": (1394982018, 1396792818),
+    "O4a":  (1368975618, 1389456018),
+    "O4b":  (1396792818, 1422118818),
+}
+
+
+def _identify_dcc_run_from_gpstime(time):
+    for run, (start, end) in DCC_OBSERVING_RUNS.items():
+        if start < time < end:
+            return run
+    return None
+
+
+def _download_and_extract_dcc_archive(url, cache_dir):
+    """
+    Download and extract a DCC calibration archive, caching both the
+    downloaded tarball (via ``download_file``) and its extracted contents,
+    so repeat requests for the same run don't re-download or re-extract.
+    """
+    archive_name = os.path.basename(url)
+    extract_dir = os.path.join(cache_dir, archive_name[: -len(".tgz")])
+
+    if not os.path.isdir(extract_dir):
+        local_name = download_file(url, directory=cache_dir, name=archive_name)
+        os.makedirs(extract_dir, exist_ok=True)
+        with tarfile.open(os.path.join(cache_dir, local_name)) as tar:
+            tar.extractall(extract_dir, filter="data")
+
+    return extract_dir
+
+
+def _select_nearest_hourly_file(extract_dir, ifo, time):
+    """
+    Find the ``calibration_uncertainty_{ifo}_{gps}.txt`` file nearest to
+    ``time`` inside an extracted ER16/O4a/O4b-style DCC archive, wherever
+    in the archive it happens to sit (the enclosing folder is named e.g.
+    "H1_ER16", but that convention isn't documented, so this doesn't rely
+    on it).
+    """
+    pattern = os.path.join(extract_dir, "**", f"calibration_uncertainty_{ifo}_*.txt")
+    regex = re.compile(rf"calibration_uncertainty_{ifo}_([0-9]+)\.txt$")
+    files_by_time = {}
+    for candidate in glob.glob(pattern, recursive=True):
+        m = regex.search(candidate)
+        if m:
+            files_by_time[int(m.group(1))] = candidate
+    if not files_by_time:
+        return None
+    keys = np.array(list(files_by_time.keys()))
+    return files_by_time[keys[np.argmin(np.abs(keys - time))]]
+
+
+def get_calibration_from_dcc(time, run=None, interferometers=("H1", "L1"), cache_dir=None):
+    """
+    Download calibration uncertainty envelopes from the public LIGO DCC.
+
+    Unlike ``find_calibrations_on_cit``, this doesn't need IGWN
+    credentials or CIT filesystem access -- the envelopes are published on
+    public DCC pages precisely so they can be used outside the
+    collaboration. Coverage is O1-O4b for LIGO (H1, L1) and O2-O3 for
+    Virgo (V1); from O4 onward Virgo's envelope is only available embedded
+    in frame files (see ``get_calibration_from_frame``).
+
+    Parameters
+    ----------
+    time : number
+       The GPS time for which the nearest calibration should be returned.
+    run : str, optional
+       The observing run (e.g. "O4a"). If not given, it's inferred from
+       ``time``.
+    interferometers : iterable of str, optional
+       Which interferometers to fetch. Defaults to ``("H1", "L1")``.
+    cache_dir : str, optional
+       Where to cache downloaded/extracted archives between calls.
+       Defaults to ``calibration/.dcc_archives``.
+
+    Returns
+    -------
+    data : dict
+       Mapping of interferometer to the local path of the downloaded
+       calibration file, for interferometers that were found.
+    """
+    if cache_dir is None:
+        cache_dir = os.path.join("calibration", ".dcc_archives")
+
+    if run is None:
+        run = _identify_dcc_run_from_gpstime(time)
+
+    if run is None or run not in DCC_LIGO_ARCHIVES:
+        logger.warning(
+            "The requested time is not inside an observing run covered by "
+            "the public DCC calibration archives (O1-O4b). No calibration "
+            "envelopes will be returned."
+        )
+        return {}
+
+    data = {}
+
+    ligo_ifos = [ifo for ifo in interferometers if ifo in ("H1", "L1")]
+    if ligo_ifos:
+        extract_dir = _download_and_extract_dcc_archive(DCC_LIGO_ARCHIVES[run], cache_dir)
+        if run in ("O1", "O2", "O3a", "O3b"):
+            found = get_o3_style_calibration(extract_dir, time)
+        else:
+            found = {}
+            for ifo in ligo_ifos:
+                path = _select_nearest_hourly_file(extract_dir, ifo, time)
+                if path:
+                    found[ifo] = path
+        for ifo in ligo_ifos:
+            if ifo in found:
+                data[ifo] = found[ifo]
+            else:
+                logger.warning(f"No public DCC calibration envelope found for {ifo} at {run}.")
+
+    if "V1" in interferometers:
+        if run in DCC_VIRGO_ARCHIVES:
+            extract_dir = _download_and_extract_dcc_archive(DCC_VIRGO_ARCHIVES[run], cache_dir)
+            candidates = sorted(glob.glob(os.path.join(extract_dir, "V1", "*.txt")))
+            if run in ("O3a", "O3b"):
+                candidates = [c for c in candidates if f"_{run}_" in os.path.basename(c)]
+            if candidates:
+                data["V1"] = candidates[0]
+            else:
+                logger.warning(f"No public DCC calibration envelope found for V1 at {run}.")
+        else:
+            logger.warning(
+                f"The public DCC doesn't distribute Virgo calibration envelopes for {run}; "
+                "use source: {type: frame} instead."
+            )
+
+    for ifo, envelope in data.items():
+        copy_file(envelope, rename=f"{ifo}.txt", directory="calibration")
+
+    if len(data) == 0:
+        logger.error("No calibration uncertainty envelopes could be downloaded from the public DCC.")
+    else:
+        click.echo("Public calibration uncertainty envelopes downloaded")
+        click.echo("-----------------------------------------------------")
+        for det, path in data.items():
+            click.echo(click.style(f"{det}: ", bold=True), nl=False)
+            click.echo(f"{path}")
+
     return data
 
 

@@ -121,7 +121,7 @@ source.type
 :Type: String
 :Required: For posterior, psds, and some calibration sources
 :Description: Type of data source
-:Valid values: ``pesummary``, ``frame``, ``local storage``
+:Valid values: ``pesummary``, ``frame``, ``local storage``, ``public``
 :Example:
 
 .. code-block:: yaml

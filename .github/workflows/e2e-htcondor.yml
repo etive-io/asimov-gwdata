@@ -3,7 +3,8 @@ name: End-to-End Tests (HTCondor)
 # Runs asimov-gwdata as an actual asimov pipeline, submitting real HTCondor
 # jobs inside an htcondor/mini container, for each major download type
 # (GWOSC frames, local-storage calibration, PESummary-sourced calibration +
-# PSDs). This is the level below which asimov's own htcondor-tests.yml
+# PSDs, public-DCC calibration). This is the level below which asimov's
+# own htcondor-tests.yml
 # exercises asimov-gwdata as one step in a much larger PE workflow - this
 # workflow exists so a regression in the gwdata<->asimov integration (e.g.
 # the pipeline's config template, or Pipeline.build_dag/detect_completion)
@@ -61,7 +62,7 @@ jobs:
         with:
           miniconda-version: "latest"
           auto-activate-base: false
-          python-version: "3.10"
+          python-version: "3.12"
           activate-environment: asimov
           channels: conda-forge
           use-mamba: true
@@ -254,13 +255,67 @@ jobs:
           timeout: "60"
           interval: "10"
 
+      # --- Scenario 4: calibration from the public LIGO DCC ---------------
+      # Same network constraint as scenario 1: pre-fetch the real O1
+      # calibration archive here, in a plain script step, directly into the
+      # rundir the condor job below will use. get_calibration_from_dcc()
+      # caches the extracted archive on disk and skips re-downloading if
+      # it's already there, so the (network-dead) condor job re-runs the
+      # same lookup against this pre-fetched archive instead of trying to
+      # reach the DCC itself.
+      # dcc.ligo.org hasn't been observed to be flaky the way gwosc.org has,
+      # but retries the same way as scenario 1's pre-fetch as cheap
+      # insurance against a one-off failure.
+      # GW150914's real event time is used unmodified here -- unlike
+      # scenario 2 (which has to override it because find_calibrations_on_cit
+      # doesn't support O1 at all), the public DCC's O1 coverage starts
+      # before GW150914, so this scenario also demonstrates public-DCC
+      # calibration succeeding for a time local-storage can't serve. Value
+      # mirrors scenario 1's frame pre-fetch (event time minus 1s) exactly.
+      - name: Pre-fetch the real DCC calibration archive (condor jobs have no network)
+        uses: etive-io/actions/run-asimov-command@v1
+        with:
+          script: |
+            mkdir -p working/GW150914_095045/get-data-calibration-public-dcc
+            cd working/GW150914_095045/get-data-calibration-public-dcc
+            python3 -c "
+            import time
+            from datafind.calibration import get_calibration_from_dcc
+
+            max_attempts = 5
+            for attempt in range(1, max_attempts + 1):
+                try:
+                    get_calibration_from_dcc(1126259461.391, interferometers=['H1', 'L1'])
+                    break
+                except Exception as e:
+                    print(f'Attempt {attempt}/{max_attempts} failed: {e!r}')
+                    if attempt == max_attempts:
+                        raise
+                    time.sleep(15)
+            "
+
+      - name: Add and submit public-DCC calibration job
+        uses: etive-io/actions/run-asimov-command@v1
+        with:
+          script: |
+            asimov apply -f "$GITHUB_WORKSPACE/tests/test_blueprints/calibration_public_dcc.yaml" -e GW150914_095045
+            asimov manage build submit
+
+      - name: Wait for public-DCC calibration files
+        uses: etive-io/actions/wait-for-files@v1
+        with:
+          patterns: "H1.txt L1.txt"
+          directory: "working/GW150914_095045/get-data-calibration-public-dcc/calibration"
+          timeout: "120"
+          interval: "10"
+
       # --- Verification ---------------------------------------------------
       - name: Run asimov monitor
         uses: etive-io/actions/run-asimov-command@v1
         with:
           script: asimov monitor
 
-      - name: Verify all three gwdata analyses completed
+      - name: Verify all four gwdata analyses completed
         uses: etive-io/actions/run-asimov-command@v1
         with:
           # Reads the ledger directly (rather than asimov.monitor_api, which

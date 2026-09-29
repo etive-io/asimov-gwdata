@@ -37,6 +37,7 @@ Calibration Uncertainty Envelopes
 * Local filesystem (LIGO detectors O2-O4)
 * Frame files (Virgo O4+)
 * PESummary metafiles
+* Public LIGO DCC archives (LIGO O1-O4b, Virgo O2-O3; no IGWN credentials required)
 * Automatic observing run detection
 
 **Supported Formats**
@@ -48,6 +49,7 @@ Calibration Uncertainty Envelopes
 
 **Observing Runs**
 
+* O1: LIGO only, and only via the public DCC (``source: {type: public}``)
 * O2: LIGO (H1, L1) and Virgo (V1)
 * O3a/O3b: LIGO and Virgo
 * O4a/O4b/O4c: LIGO and Virgo (frame-based)

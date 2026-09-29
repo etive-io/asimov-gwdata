@@ -255,6 +255,27 @@ class TestCalibrationDispatch(unittest.TestCase):
                 host="datafind.igwn.org",
             )
 
+    def test_calibration_from_public_dcc(self):
+        with temporary_test_directory() as tmpdir:
+            settings_path = os.path.join(tmpdir, "settings.yaml")
+            write_settings(
+                settings_path,
+                {
+                    "time": {"start": 1370000000},
+                    "data": ["calibration"],
+                    "source": {"type": "public"},
+                    "interferometers": ["H1", "L1"],
+                },
+            )
+            with patch("datafind.main.calibration.get_calibration_from_dcc") as mock_dcc:
+                result = invoke_get_data(tmpdir, settings_path)
+
+            self.assertEqual(result.exit_code, 0, result.output)
+            mock_dcc.assert_called_once_with(
+                time=1370000000,
+                interferometers=["H1", "L1"],
+            )
+
 
 class TestPosteriorAndPsdsDispatch(unittest.TestCase):
     def test_posterior_only(self):
