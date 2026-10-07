@@ -418,6 +418,20 @@ def find_calibrations_on_cit(time,
             interferometers = list(version.keys())
         else:
             interferometers = ["H1", "L1"]
+    elif isinstance(version, dict):
+        missing = [i for i in interferometers if i in ("H1", "L1") and i not in version]
+        if missing:
+            raise ValueError(
+                f"No calibration version given in `version` for {missing}; "
+                f"`version` has keys {sorted(version)} but `interferometers` "
+                f"requests {sorted(interferometers)}."
+            )
+        unused = sorted(set(version) - set(interferometers))
+        if unused:
+            logger.warning(
+                f"Calibration versions given for {unused}, which are not in "
+                f"the requested interferometers {sorted(interferometers)}; ignoring them."
+            )
 
     observing_runs = {
         "O1":   [1126623617, 1136649617],

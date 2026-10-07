@@ -200,3 +200,14 @@ class TestFrameCalibration(unittest.TestCase):
         data_2 = np.loadtxt("tests/test_data/test_envelope.txt")
 
         np.testing.assert_equal(data_1, data_2)
+
+
+def test_version_dict_must_cover_requested_interferometers():
+    """Requesting a LIGO interferometer with no entry in a version dict is an error."""
+    import pytest
+    from datafind.calibration import find_calibrations_on_cit
+
+    with pytest.raises(ValueError):
+        find_calibrations_on_cit(
+            1260000000, version={"H1": "v1"}, interferometers=["H1", "L1"]
+        )
