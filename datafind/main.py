@@ -21,14 +21,24 @@ logger = logging.getLogger("gwdata")
 
 @click.command()
 @click.option("--settings")
-def get_data(settings):  # detectors, start, end, duration, frames):
+@click.option("--verbose", "-v", is_flag=True, help="Log debugging information.")
+def get_data(settings, verbose):  # detectors, start, end, duration, frames):
+    logging.basicConfig(
+        level=logging.DEBUG if verbose else logging.INFO,
+        format="%(asctime)s %(name)s %(levelname)s: %(message)s",
+    )
+    logger.info(f"Reading settings from {settings}")
     with open(settings, "r") as file_handle:
         settings = yaml.safe_load(file_handle)
+    logger.debug(f"Settings: {settings}")
 
     _report = Report(webdir="report", settings=settings)
 
+    logger.info(f"Requested data components: {settings['data']}")
+
     if "frames" in settings["data"]:
         frames_source = settings.get("source", {}).get("frames", None)
+        logger.info(f"Retrieving frames (source: {frames_source or 'gwosc'})")
         if frames_source == "osdf":
             frame_types = settings.get("frame types", [])
             if not frame_types:
@@ -60,6 +70,7 @@ def get_data(settings):  # detectors, start, end, duration, frames):
     if "calibration" in settings["data"]:
         source = settings.get("source", {})
         type = source.get("type", None)
+        logger.info(f"Retrieving calibration (source type: {type or 'local storage'})")
         if type == "pesummary":
             # Allow calibration uncertainty envelopes to be extracted from a PESummary metafile.
             summaryfile = settings["source"]["location"]
@@ -75,6 +86,7 @@ def get_data(settings):  # detectors, start, end, duration, frames):
             # create a separate analysis using the frame type to download
             # Virgo calibration uncertainty.
             directory = settings.get("locations", {}).get("calibration directory", None)
+            logger.debug(f"Calibration directory: {directory}")
             calibration.find_calibrations_on_cit(
                 settings["time"]["start"],
                 directory,
@@ -87,7 +99,8 @@ def get_data(settings):  # detectors, start, end, duration, frames):
             # distributing calibration this way at present.
                 if ifo != "V1":
                     logger.error("Only V1 calibration can be retrieved from frame files.")
-                
+
+                logger.info(f"Retrieving {ifo} calibration from frame file")
                 calibration.get_calibration_from_frame(
                     ifo=ifo,
                     prefix=settings.get("virgo prefix", "V1:Hrec_hoft_U00"),
@@ -108,11 +121,13 @@ def get_data(settings):  # detectors, start, end, duration, frames):
         settings["data"].remove("calibration")
 
     if "posterior" in settings["data"]:
+        logger.info("Retrieving posterior from PESummary metafile")
         get_pesummary(components=settings["data"], settings=settings)
         settings["data"].remove("posterior")
 
     if "psds" in settings["data"]:
         # Gather a PSD from a PESummary Metafile
+        logger.info("Retrieving PSDs from PESummary metafile")
         if "source" in settings:
             if settings["source"]["type"] == "pesummary":
                 summaryfile = settings["source"]["location"]
@@ -137,7 +152,11 @@ def get_pesummary(components, settings):
     if "source" in settings:
         if settings["source"]["type"] == "pesummary":
             location = settings["source"]["location"]
-            location = glob.glob(location)[0]
+            matches = glob.glob(location)
+            if not matches:
+                raise FileNotFoundError(f"No PESummary metafile found matching {location!r}")
+            location = matches[0]
+            logger.info(f"Using PESummary metafile {location}")
     else:
         raise ValueError("No metafile location found")
     data = read(location, package="gw")
