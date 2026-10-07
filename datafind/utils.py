@@ -3,8 +3,11 @@ from urllib.parse import urlparse, unquote
 from requests_pelican import PelicanAdapter
 from igwn_auth_utils import Session
 import shutil
+import logging
 
 import requests
+
+logger = logging.getLogger("gwdata")
 
 
 def download_file(url, directory="frames", name=None):
@@ -29,8 +32,10 @@ def download_file(url, directory="frames", name=None):
     else:
         local_filename = name
 
-    if not os.path.exists(os.path.join(directory, local_filename)):
-                
+    if os.path.exists(os.path.join(directory, local_filename)):
+        logger.debug(f"{local_filename} already exists in {directory}; not downloading.")
+    else:
+        logger.info(f"Downloading {url} to {os.path.join(directory, local_filename)}")
         if parsed_url.scheme == "file":
             shutil.copyfile(url[16:], os.path.join(directory, local_filename))
         elif parsed_url.scheme == "osdf":
@@ -69,9 +74,11 @@ def download_from_zenodo(record_id, directory="data", files=None):
       The local paths of the downloaded files.
     """
     api_url = f"https://zenodo.org/api/records/{record_id}"
+    logger.info(f"Querying Zenodo record {record_id}")
     response = requests.get(api_url)
     response.raise_for_status()
     record_files = response.json().get("files", [])
+    logger.debug(f"Zenodo record {record_id} contains {len(record_files)} file(s)")
 
     downloaded_files = []
     for file_info in record_files:
@@ -82,4 +89,9 @@ def download_from_zenodo(record_id, directory="data", files=None):
         local_filename = download_file(file_url, directory=directory, name=filename)
         downloaded_files.append(os.path.join(directory, local_filename))
 
+    if files is not None:
+        missing = set(files) - {os.path.basename(f) for f in downloaded_files}
+        if missing:
+            logger.warning(f"Files not found in Zenodo record {record_id}: {sorted(missing)}")
+    logger.info(f"Downloaded {len(downloaded_files)} file(s) from Zenodo record {record_id}")
     return downloaded_files
