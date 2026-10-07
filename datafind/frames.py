@@ -122,6 +122,7 @@ def get_data_frames_private(
     urls = {}
     files = {}
     detectors = [type.split(":")[0] for type in types]
+    logger.info(f"Searching {host} for frame types {types} from {start} to {end}")
     with Session() as sess:
         sess.mount("osdf://", PelicanAdapter("osdf"))
         for ifo, type in zip(detectors, types):
@@ -134,7 +135,11 @@ def get_data_frames_private(
                 session=sess,
                 urltype="osdf",
             )
-    logger.info(urls)
+    for ifo, det_urls in urls.items():
+        if not det_urls:
+            logger.warning(f"No frames found for {ifo} between {start} and {end}")
+        logger.info(f"{ifo}: found {len(det_urls)} frame URL(s)")
+        logger.debug(f"{ifo} URLs: {det_urls}")
     if download:
         for ifo, det_urls in urls.items():
             files[ifo] = []
@@ -181,9 +186,11 @@ def get_data_frames_gwosc(detectors, start, end, duration):
             files[detector] = cached
             continue
 
+        logger.info(f"Querying GWOSC for {detector} frames from {start} to {end}")
         det_urls = get_urls(
             detector=detector, start=start, end=end, sample_rate=16384, format="gwf"
         )
+        logger.debug(f"GWOSC returned {len(det_urls)} URL(s) for {detector}")
         det_urls_dur = []
         det_files = []
         for url in det_urls:
@@ -193,6 +200,11 @@ def get_data_frames_gwosc(detectors, start, end, duration):
                 det_urls_dur.append(url)
                 download_file(url)
                 det_files.append(filename)
+        if not det_files:
+            logger.warning(
+                f"No GWOSC frames for {detector} with duration >= {duration} s "
+                f"covering {start}-{end}"
+            )
         urls[detector] = det_urls_dur
         files[detector] = det_files
 
@@ -208,5 +220,5 @@ def get_data_frames_gwosc(detectors, start, end, duration):
 
     logger.info("Frames found")
     for det, url in files.items():
-        logger.info((f"{det}: {url[0]}"))
+        logger.info(f"{det}: {url[0] if url else 'no frames'}")
     return urls, files
