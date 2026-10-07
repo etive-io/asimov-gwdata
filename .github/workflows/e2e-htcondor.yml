@@ -33,7 +33,9 @@ jobs:
     name: "HTCondor End-to-End Test"
     runs-on: ubuntu-latest
     container:
-      image: htcondor/mini:latest
+      # Pinned: the 25.14 PyPI bindings cannot authenticate to a 25.13 daemon
+      # (AUTHENTICATE:1003 at schedd.submit()), so keep image and bindings together.
+      image: htcondor/mini:25.13.2-el9
       options: --privileged
     defaults:
       run:
@@ -73,7 +75,7 @@ jobs:
           git config --global --add safe.directory "${GITHUB_WORKSPACE}"
           conda activate asimov
           python -m pip install --upgrade pip
-          python -m pip install --force-reinstall "."
+          python -m pip install --force-reinstall "." "htcondor<25.14"
           echo "Installed asimov from: $(python -c 'import asimov; print(asimov.__file__)')"
           echo "Installed gwdata pipeline plugin from: $(python -c 'import datafind.asimov; print(datafind.asimov.__file__)')"
 
