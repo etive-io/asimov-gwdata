@@ -23,18 +23,22 @@ class Pipeline(asimov.pipeline.Pipeline):
 
     #: Every data product this pipeline can produce (asimov >= 0.8 uses this
     #: to check ``needs:`` dependencies and to find PSDs from a dependency).
-    #: The products a particular analysis will produce depend on its
-    #: ``download`` list; see :meth:`get_actual_outputs`.
-    available_outputs = ["frames", "cache", "psd", "calibration", "posterior_samples"]
+    #: These are the keys :meth:`collect_assets` returns. The products a
+    #: particular analysis will produce depend on its ``download`` list; see
+    #: :meth:`get_actual_outputs`.
+    available_outputs = ["frames", "caches", "psds", "xml psds", "calibration", "samples"]
     required_inputs = []
 
     # Maps entries in an analysis's ``download`` list onto output products.
+    # "xml psds" is deliberately not promised for a PSD download: it is only
+    # produced when convert_psd_ascii2xml is available in the job's
+    # environment. Frame caches are handled in get_actual_outputs.
     _DOWNLOAD_OUTPUTS = {
-        "frames": ["frames", "cache"],
+        "frames": ["frames"],
         "calibration": ["calibration"],
-        "psds": ["psd"],
-        "psd": ["psd"],
-        "posterior": ["posterior_samples"],
+        "psds": ["psds"],
+        "psd": ["psds"],
+        "posterior": ["samples"],
     }
 
     def get_actual_outputs(self, production):
@@ -49,6 +53,11 @@ class Pipeline(asimov.pipeline.Pipeline):
             for product in self._DOWNLOAD_OUTPUTS.get(item, []):
                 if product not in outputs:
                     outputs.append(product)
+        # A frame cache is only written for frames fetched from GWOSC (the
+        # default), not for frames found through a datafind server (OSDF).
+        source = production.meta.get("source", {}) or {}
+        if "frames" in outputs and source.get("frames", "gwosc") != "osdf":
+            outputs.insert(outputs.index("frames") + 1, "caches")
         return outputs
 
     def get_actual_inputs(self, production):
@@ -200,6 +209,10 @@ class Pipeline(asimov.pipeline.Pipeline):
 
     def submit_dag(self, dryrun=False):
         if dryrun:
+            self.logger.info(
+                f"Dry run: not marking {self.production.name} as running, "
+                "since no job was submitted."
+            )
             return None
         self.production.status = "running"
         self.production.job_id = int(self.clusterid)
@@ -247,9 +260,7 @@ class Pipeline(asimov.pipeline.Pipeline):
             outputs["frames"] = frames
 
             event_data = self.production.event.meta.setdefault("data", {})
-            c = event_data.get("data files", {})
-            c.update(frames)
-            event_data["data files"] = c
+            event_data.setdefault("data files", {}).update(frames)
 
 
         if os.path.exists(os.path.join(self.production.rundir, "cache")) and (
@@ -301,9 +312,7 @@ class Pipeline(asimov.pipeline.Pipeline):
             outputs["calibration"] = calibration
 
             event_data = self.production.event.meta.setdefault("data", {})
-            c = event_data.get("calibration", {})
-            c.update(calibration)
-            event_data["calibration"] = c
+            event_data.setdefault("calibration", {}).update(calibration)
             
         if os.path.exists(os.path.join(self.production.rundir, "posterior")):
             results = glob.glob(os.path.join(self.production.rundir, "posterior", "*"))

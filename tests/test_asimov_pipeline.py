@@ -499,17 +499,42 @@ class TestDeclaredOutputs(PipelineTestCase):
         )
         self.assertEqual(
             pipeline.get_actual_outputs(production),
-            ["calibration", "psd", "posterior_samples"],
+            ["calibration", "psds", "samples"],
         )
 
-    def test_outputs_default_to_frames(self):
+    def test_outputs_default_to_gwosc_frames_with_cache(self):
         pipeline, production = self.make_pipeline(meta={})
-        self.assertEqual(pipeline.get_actual_outputs(production), ["frames", "cache"])
+        self.assertEqual(pipeline.get_actual_outputs(production), ["frames", "caches"])
 
-    def test_psd_is_advertised_for_downstream_psd_lookup(self):
-        # asimov >= 0.8 checks for "psd" in available_outputs when deciding
-        # whether a needs: dependency is expected to supply PSDs.
-        self.assertIn("psd", self.Pipeline.available_outputs)
+    def test_osdf_frames_have_no_cache(self):
+        pipeline, production = self.make_pipeline(
+            meta={"download": ["frames"], "source": {"frames": "osdf"}}
+        )
+        self.assertEqual(pipeline.get_actual_outputs(production), ["frames"])
+
+    def test_declared_outputs_match_collect_assets_keys(self):
+        with temporary_test_directory() as tmpdir:
+            for d in ("frames", "cache", "psds", "calibration", "posterior"):
+                os.makedirs(os.path.join(tmpdir, d))
+            open(os.path.join(tmpdir, "frames", "H-H1_GWOSC-1-32.gwf"), "w").close()
+            open(os.path.join(tmpdir, "cache", "H1.cache"), "w").close()
+            open(os.path.join(tmpdir, "psds", "H1.dat"), "w").close()
+            open(os.path.join(tmpdir, "psds", "H1.xml.gz"), "w").close()
+            open(os.path.join(tmpdir, "calibration", "H1.dat"), "w").close()
+            open(os.path.join(tmpdir, "posterior", "samples.h5"), "w").close()
+            pipeline, _ = self.make_pipeline(
+                rundir=tmpdir,
+                meta={"download": ["frames", "psds", "calibration", "posterior"]},
+                event_meta={"data": {}},
+            )
+            self.assertEqual(
+                set(pipeline.collect_assets()), set(self.Pipeline.available_outputs)
+            )
+
+    def test_psds_are_advertised_for_downstream_psd_lookup(self):
+        # asimov >= 0.8 checks for "psd" or "psds" in available_outputs when
+        # deciding whether a needs: dependency is expected to supply PSDs.
+        self.assertIn("psds", self.Pipeline.available_outputs)
         self.assertEqual(self.Pipeline(self.make_production()).get_actual_inputs(None), [])
 
 
