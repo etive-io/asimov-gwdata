@@ -143,10 +143,13 @@ def setup(name, preset, events, analyses, directory, dry_run):
             click.echo(click.style("DRY RUN - No changes will be made\n", fg="yellow", bold=True))
 
         # Step 1: Initialize project
+        # `asimov init NAME` creates the project in `--root`, which defaults
+        # to the current directory (NAME is only the project's title), so
+        # pass the project directory explicitly or it is never created.
         init_cwd = str(directory) if directory else "."
         _run_step(
             f"Initializing project '{name}'",
-            ["asimov", "init", name],
+            ["asimov", "init", name, "--root", str(Path(init_cwd).resolve() / name)],
             cwd=init_cwd,
             dry_run=dry_run,
         )

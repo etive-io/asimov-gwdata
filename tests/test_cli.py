@@ -8,6 +8,8 @@ them.
 """
 import os
 import shutil
+import subprocess
+import sys
 import tempfile
 import textwrap
 import unittest
@@ -103,6 +105,110 @@ class GwCliFixtureTests(unittest.TestCase):
         event = repo.get_event("GW150914_095045")
         self.assertIsNotNone(event)
         self.assertEqual(event["catalog"], "gwtc-2-1")
+
+
+def _ledger_productions(project_dir):
+    """
+    Read ``{event: [(analysis, pipeline), ...]}`` from a project's ledger.
+
+    Done in a subprocess because asimov reads its project configuration from
+    the current directory when it is first imported.
+    """
+    script = (
+        "import json\n"
+        "from asimov import current_ledger as ledger\n"
+        "print(json.dumps({e.name: [[p.name, str(p.pipeline)] for p in e.productions]"
+        " for e in ledger.get_event()}))\n"
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", script],
+        cwd=project_dir, capture_output=True, text=True, check=True,
+    )
+    import json
+    return {k: [tuple(p) for p in v] for k, v in json.loads(result.stdout.splitlines()[-1]).items()}
+
+
+@unittest.skipIf(shutil.which("asimov") is None, "the asimov command is not on PATH")
+class GwCliRealProjectTests(unittest.TestCase):
+    """
+    Run ``setup`` and ``events add`` for real (not ``--dry-run``), so the
+    ``asimov`` commands they generate are actually executed against a new
+    project.
+    """
+
+    def setUp(self):
+        self.tmpdir = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.tmpdir, True)
+        self.data = os.path.join(self.tmpdir, "asimov-data")
+        _build_fixture_repo(self.data)
+        _write(
+            os.path.join(self.data, "events", "gwtc-2-1", "GW151226_033853.yaml"),
+            """
+            kind: event
+            name: GW151226_033853
+            event time: 1135136350.6
+            interferometers: [H1, L1]
+            """,
+        )
+        _write(
+            os.path.join(self.data, "analyses", "get-data.yaml"),
+            """
+            kind: analysis
+            name: get-data
+            pipeline: gwdata
+            download: [calibration]
+            source:
+              type: public
+            """,
+        )
+        self.work = os.path.join(self.tmpdir, "work")
+        os.makedirs(self.work)
+
+        env_patch = unittest.mock.patch.dict(os.environ, {"ASIMOV_DATA_PATH": self.data})
+        env_patch.start()
+        self.addCleanup(env_patch.stop)
+
+        cwd = os.getcwd()
+        self.addCleanup(os.chdir, cwd)
+
+    def _setup_project(self):
+        result = CliRunner().invoke(
+            gw,
+            [
+                "setup",
+                "--name", "real-project",
+                "--events", "GW150914_095045",
+                "--analyses", "get-data",
+                "--directory", self.work,
+            ],
+        )
+        self.assertEqual(result.exit_code, 0, result.output)
+        return os.path.join(self.work, "real-project")
+
+    def test_setup_creates_project_with_event_and_analysis(self):
+        project = self._setup_project()
+        self.assertTrue(os.path.isfile(os.path.join(project, ".asimov", "asimov.conf")))
+        # asimov init must not have scattered the project into --directory itself.
+        self.assertFalse(os.path.exists(os.path.join(self.work, ".asimov")))
+        self.assertEqual(
+            _ledger_productions(project),
+            {"GW150914_095045": [("get-data", "gwdata")]},
+        )
+
+    def test_events_add_to_existing_project(self):
+        project = self._setup_project()
+        os.chdir(project)
+        result = CliRunner().invoke(
+            gw, ["events", "add", "GW151226_033853", "--analyses", "get-data"]
+        )
+        self.assertEqual(result.exit_code, 0, result.output)
+        self.assertEqual(
+            _ledger_productions(project),
+            {
+                "GW150914_095045": [("get-data", "gwdata")],
+                "GW151226_033853": [("get-data", "gwdata")],
+            },
+        )
 
 
 class GwCliHelpTests(unittest.TestCase):
