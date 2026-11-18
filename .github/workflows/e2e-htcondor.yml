@@ -320,33 +320,34 @@ jobs:
       - name: Verify all four gwdata analyses completed
         uses: etive-io/actions/run-asimov-command@v1
         with:
-          # Reads the ledger directly (rather than asimov.monitor_api, which
-          # is only available on much newer asimov than this repo's declared
-          # minimum) so this check works across the range of asimov versions
-          # asimov-gwdata supports.
+          # Goes through asimov's ledger API rather than reading
+          # .asimov/ledger.yml directly: asimov 0.8 projects store the ledger
+          # in a database (.asimov/ledger.db) instead, and the API works for
+          # both.
           script: |
             python3 <<'EOF'
             import sys
-            import yaml
-
-            with open(".asimov/ledger.yml") as f:
-                ledger = yaml.safe_load(f)
+            from asimov import current_ledger as ledger
 
             print("Final analysis statuses:")
             failures = []
-            for event in ledger.get("events", []):
-                for prod_entry in event.get("productions", []):
-                    for name, prod in prod_entry.items():
-                        status = str(prod.get("status", "")).lower()
-                        print(f"  {name}: {status}")
-                        if status not in ("finished", "uploaded"):
-                            failures.append(f"{name}: {status}")
+            count = 0
+            for event in ledger.get_event():
+                for production in event.productions:
+                    count += 1
+                    status = str(production.status).lower()
+                    print(f"  {production.name}: {status}")
+                    if status not in ("finished", "uploaded"):
+                        failures.append(f"{production.name}: {status}")
+            if count == 0:
+                print("FAIL: no analyses found in the ledger")
+                sys.exit(1)
             if failures:
                 print(f"\nFAIL: {len(failures)} analyses not complete:")
                 for f in failures:
                     print(f"  - {f}")
                 sys.exit(1)
-            print("\nAll gwdata analyses are complete!")
+            print(f"\nAll {count} gwdata analyses are complete!")
             EOF
 
       - name: Archive testing artifacts
