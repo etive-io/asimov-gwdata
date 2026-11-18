@@ -416,3 +416,114 @@ class TestAfterCompletionAndHtml(PipelineTestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestDryRun(PipelineTestCase):
+    def test_build_dag_dryrun_writes_files_but_does_not_submit(self):
+        with temporary_test_directory() as tmpdir:
+            pipeline, production, scheduler = self.make_pipeline_with_scheduler(
+                rundir=tmpdir, ini_contents="data: [frames]\n", meta={}
+            )
+            with patch.object(
+                self.asimov_module.config, "get",
+                side_effect=_config_get({("pipelines", "environment"): "/opt/env"}),
+            ):
+                pipeline.build_dag(dryrun=True)
+
+            self.assertTrue(os.path.exists(os.path.join(tmpdir, "get-data.sub")))
+            self.assertTrue(os.path.exists(os.path.join(tmpdir, "get-data.sh")))
+            scheduler.submit.assert_not_called()
+            self.assertIsNone(production.job_id)
+
+    def test_submit_dag_dryrun_leaves_status_alone(self):
+        pipeline, production = self.make_pipeline()
+        self.assertIsNone(pipeline.submit_dag(dryrun=True))
+        self.assertIsNone(production.status)
+
+
+class TestAccounting(PipelineTestCase):
+    def _sub_contents(self, meta, config_values):
+        with temporary_test_directory() as tmpdir:
+            pipeline, _, _ = self.make_pipeline_with_scheduler(
+                rundir=tmpdir, ini_contents="data: [frames]\n", meta=meta
+            )
+            values = {("pipelines", "environment"): "/opt/env"}
+            values.update(config_values)
+            with patch.object(
+                self.asimov_module.config, "get", side_effect=_config_get(values)
+            ):
+                pipeline.build_dag()
+            with open(os.path.join(tmpdir, "get-data.sub")) as f:
+                return f.read()
+
+    def test_falls_back_to_project_accounting_group(self):
+        sub = self._sub_contents(
+            meta={},
+            config_values={
+                ("condor", "accounting"): "ligo.dev.o4.cbc.pe.bilby",
+                ("condor", "user"): "submituser",
+            },
+        )
+        self.assertIn("accounting_group = ligo.dev.o4.cbc.pe.bilby", sub)
+        self.assertIn("accounting_group_user = submituser", sub)
+
+    def test_analysis_accounting_overrides_project_setting(self):
+        sub = self._sub_contents(
+            meta={
+                "scheduler": {
+                    "accounting group": "ligo.prod.o4.cbc.pe.bilby",
+                    "accounting group user": "albert.einstein",
+                }
+            },
+            config_values={
+                ("condor", "accounting"): "ligo.dev.o4.cbc.pe.bilby",
+                ("condor", "user"): "submituser",
+            },
+        )
+        self.assertIn("accounting_group = ligo.prod.o4.cbc.pe.bilby", sub)
+        self.assertIn("accounting_group_user = albert.einstein", sub)
+
+    def test_group_without_configured_user_does_not_crash(self):
+        sub = self._sub_contents(
+            meta={"scheduler": {"accounting group": "ligo.dev.o4.cbc.pe.bilby"}},
+            config_values={},
+        )
+        self.assertIn("accounting_group = ligo.dev.o4.cbc.pe.bilby", sub)
+        self.assertNotIn("accounting_group_user", sub)
+
+
+class TestDeclaredOutputs(PipelineTestCase):
+    def test_outputs_follow_download_list(self):
+        pipeline, production = self.make_pipeline(
+            meta={"download": ["calibration", "psds", "posterior"]}
+        )
+        self.assertEqual(
+            pipeline.get_actual_outputs(production),
+            ["calibration", "psd", "posterior_samples"],
+        )
+
+    def test_outputs_default_to_frames(self):
+        pipeline, production = self.make_pipeline(meta={})
+        self.assertEqual(pipeline.get_actual_outputs(production), ["frames", "cache"])
+
+    def test_psd_is_advertised_for_downstream_psd_lookup(self):
+        # asimov >= 0.8 checks for "psd" in available_outputs when deciding
+        # whether a needs: dependency is expected to supply PSDs.
+        self.assertIn("psd", self.Pipeline.available_outputs)
+        self.assertEqual(self.Pipeline(self.make_production()).get_actual_inputs(None), [])
+
+
+class TestCollectAssetsWithoutEventData(PipelineTestCase):
+    def test_event_without_data_section_still_returns_psds(self):
+        with temporary_test_directory() as tmpdir:
+            for d in ("psds", "calibration"):
+                os.makedirs(os.path.join(tmpdir, d))
+            open(os.path.join(tmpdir, "psds", "H1.dat"), "w").close()
+            open(os.path.join(tmpdir, "calibration", "H1.dat"), "w").close()
+            pipeline, production = self.make_pipeline(
+                rundir=tmpdir, meta={"download": ["psds", "calibration"]}, event_meta={}
+            )
+            assets = pipeline.collect_assets()
+            self.assertIn("H1", assets["psds"])
+            self.assertIn("H1", assets["calibration"])
+            self.assertIn("H1", production.event.meta["data"]["calibration"])

@@ -13,6 +13,14 @@ name: End-to-End Tests (HTCondor)
 # The shared composite actions used below (setup-htcondor, create-submit-user,
 # run-asimov-command, wait-for-files) live in etive-io/actions, which is used
 # across the asimov plugin ecosystem for this same HTCondor CI scaffolding.
+#
+# Every scenario runs twice: once against the permissive htcondor/mini pool,
+# and once against a pool configured with the LIGO Data Grid's
+# submission-time policy (valid accounting group required, request_disk
+# required, getenv = True rejected, security:recommended). The LDG policy
+# and its setup action are vendored from asimov (see
+# tests/fixtures/ldg-condor-config/README.md); asimov runs the same check
+# for its own bundled pipelines in htcondor-ldg-parity-tests.yml.
 
 on:
   push:
@@ -30,8 +38,14 @@ permissions:
 
 jobs:
   e2e:
-    name: "HTCondor End-to-End Test"
+    # The permissive leg keeps the original check name so existing branch
+    # protection rules continue to match it.
+    name: ${{ matrix.pool == 'ldg' && 'HTCondor End-to-End Test (LDG parity)' || 'HTCondor End-to-End Test' }}
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        pool: [permissive, ldg]
     container:
       # Pinned: the 25.14 PyPI bindings cannot authenticate to a 25.13 daemon
       # (AUTHENTICATE:1003 at schedd.submit()), so keep image and bindings together.
@@ -46,7 +60,13 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: etive-io/actions/setup-htcondor@v1
+      - name: Set up HTCondor (permissive pool)
+        if: matrix.pool == 'permissive'
+        uses: etive-io/actions/setup-htcondor@v1
+
+      - name: Set up HTCondor (LDG-parity pool)
+        if: matrix.pool == 'ldg'
+        uses: ./.github/actions/setup-htcondor-ldg
 
       - name: Install base tools
         run: |
@@ -120,10 +140,15 @@ jobs:
         with:
           script: asimov init "Test Project"
 
-      - name: Configure asimov user
+      - name: Configure asimov user and accounting
         uses: etive-io/actions/run-asimov-command@v1
         with:
-          script: asimov configuration update condor/user submituser
+          # The blueprints don't set a per-analysis accounting group, so this
+          # project-wide tag is what gwdata's jobs carry. The LDG-parity pool
+          # rejects jobs without a tag from its (fixture-only) valid_tags map.
+          script: |
+            asimov configuration update condor/user submituser
+            asimov configuration update condor/accounting ligo.dev.o4.cbc.pe.bilby
 
       - name: Configure HTCondor settings
         uses: etive-io/actions/run-asimov-command@v1
@@ -320,40 +345,56 @@ jobs:
       - name: Verify all four gwdata analyses completed
         uses: etive-io/actions/run-asimov-command@v1
         with:
-          # Reads the ledger directly (rather than asimov.monitor_api, which
-          # is only available on much newer asimov than this repo's declared
-          # minimum) so this check works across the range of asimov versions
-          # asimov-gwdata supports.
+          # Goes through asimov's ledger API rather than reading
+          # .asimov/ledger.yml directly: asimov 0.8 projects store the ledger
+          # in a database (.asimov/ledger.db) instead, and the API works for
+          # both.
           script: |
             python3 <<'EOF'
             import sys
-            import yaml
-
-            with open(".asimov/ledger.yml") as f:
-                ledger = yaml.safe_load(f)
+            from asimov import current_ledger as ledger
 
             print("Final analysis statuses:")
             failures = []
-            for event in ledger.get("events", []):
-                for prod_entry in event.get("productions", []):
-                    for name, prod in prod_entry.items():
-                        status = str(prod.get("status", "")).lower()
-                        print(f"  {name}: {status}")
-                        if status not in ("finished", "uploaded"):
-                            failures.append(f"{name}: {status}")
+            count = 0
+            for event in ledger.get_event():
+                for production in event.productions:
+                    count += 1
+                    status = str(production.status).lower()
+                    print(f"  {production.name}: {status}")
+                    if status not in ("finished", "uploaded"):
+                        failures.append(f"{production.name}: {status}")
+            if count == 0:
+                print("FAIL: no analyses found in the ledger")
+                sys.exit(1)
             if failures:
                 print(f"\nFAIL: {len(failures)} analyses not complete:")
                 for f in failures:
                     print(f"  - {f}")
                 sys.exit(1)
-            print("\nAll gwdata analyses are complete!")
+            print(f"\nAll {count} gwdata analyses are complete!")
             EOF
+
+      # A job rejected at submit time by the LDG-parity policy would
+      # otherwise only show up as a wait-for-files timeout. Dump the queue
+      # and history (with hold reasons and accounting classads) so the cause
+      # is visible in the log.
+      - name: Show HTCondor queue/history for diagnostics
+        if: always()
+        run: |
+          su - submituser -c '
+            echo "=== condor_q (submituser) ==="
+            condor_q submituser -af ClusterId JobStatus JobBatchName LigoSearchTag LigoSearchUser HoldReason || true
+            echo
+            echo "=== condor_history (submituser, last 50) ==="
+            condor_history submituser -af ClusterId JobStatus JobBatchName LigoSearchTag ExitCode HoldReason -limit 50 || true
+          '
 
       - name: Archive testing artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: e2e-htcondor-debug
+          name: e2e-htcondor-debug-${{ matrix.pool }}
           path: |
             .asimov/
             checkouts/
