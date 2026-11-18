@@ -104,6 +104,9 @@ def get_data(settings, verbose):  # detectors, start, end, duration, frames):
                 version=settings.get("calibration version", "v1"),
                 interferometers=lookup_ifos,
             )
+            logger.info(
+                f"Calibration found in the local archive for: {sorted(found) or 'none'}"
+            )
 
             if ("V1" in lookup_ifos) and ("V1" not in found) and (type != "local storage"):
                 # find_calibrations_on_cit() only creates "calibration/" as
@@ -111,6 +114,10 @@ def get_data(settings, verbose):  # detectors, start, end, duration, frames):
                 # the local archive lookup came back empty (e.g. this
                 # analysis only wanted V1) the directory may not exist yet.
                 os.makedirs("calibration", exist_ok=True)
+                logger.info(
+                    "V1 calibration was not found in the local archive; "
+                    "retrieving it from frame files instead"
+                )
                 calibration.get_calibration_from_frame(
                     ifo="V1",
                     prefix=settings.get("virgo prefix", "V1:Hrec_hoft_U00"),
