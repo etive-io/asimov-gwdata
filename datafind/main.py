@@ -14,7 +14,8 @@ from asimov.utils import set_directory
 from .metafiles import Metafile
 from . import calibration
 
-from .frames import get_data_frames_gwosc
+from .frames import get_data_frames_gwosc, get_data_frames_private
+from .report import Report
 
 logger = logging.getLogger("gwdata")
 
@@ -24,13 +25,36 @@ def get_data(settings):  # detectors, start, end, duration, frames):
     with open(settings, "r") as file_handle:
         settings = yaml.safe_load(file_handle)
 
+    _report = Report(webdir="report", settings=settings)
+
     if "frames" in settings["data"]:
-        get_data_frames_gwosc(
-            settings["interferometers"],
-            settings["time"]["start"],
-            settings["time"]["end"],
-            settings["time"]["duration"],
-        )
+        frames_source = settings.get("source", {}).get("frames", None)
+        if frames_source == "osdf":
+            frame_types = settings.get("frame types", [])
+            if not frame_types:
+                raise ValueError(
+                    "source.frames is 'osdf' but no 'frame types' were specified."
+                )
+            _, frames = get_data_frames_private(
+                frame_types,
+                settings["time"]["start"],
+                settings["time"]["end"],
+                download=True,
+                host=settings.get("locations", {}).get("datafind server", "datafind.igwn.org"),
+            )
+        elif (frames_source == "gwosc") or (frames_source is None):
+            _, frames = get_data_frames_gwosc(
+                settings["interferometers"],
+                settings["time"]["start"],
+                settings["time"]["end"],
+                settings["time"]["duration"],
+            )
+        else:
+            raise ValueError(f"Unrecognised source.frames value: {frames_source!r}")
+
+        _report.frames = frames
+        _report._add_spectrograms()
+
         settings["data"].remove("frames")
 
     if "calibration" in settings["data"]:
@@ -101,6 +125,13 @@ def get_data(settings):  # detectors, start, end, duration, frames):
                     host=settings.get("locations", {})\
                     .get("datafind server", "datafind.igwn.org")
                 )
+        elif type == "public":
+            # Retrieve publicly-distributed calibration uncertainty envelopes
+            # from the LIGO DCC, requiring no IGWN credentials or CIT access.
+            calibration.get_calibration_from_dcc(
+                time=settings["time"]["start"],
+                interferometers=settings.get("interferometers", ["H1", "L1"]),
+            )
 
         settings["data"].remove("calibration")
 
@@ -148,8 +179,6 @@ def get_pesummary(components, settings):
         if component == "posterior":
             os.makedirs("posterior", exist_ok=True)
             shutil.copy(location, os.path.join("posterior", "metafile.h5"))
-            # analysis_data = data.samples_dict[analysis]
-            # analysis_data.write(package="gw", file_format="dat", filename="posterior/posterior_samples.dat")
 
         if component == "psds":
             os.makedirs("psds", exist_ok=True)

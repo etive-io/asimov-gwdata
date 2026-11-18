@@ -46,3 +46,40 @@ def download_file(url, directory="frames", name=None):
                     shutil.copyfileobj(r.raw, f)
 
     return local_filename
+
+
+def download_from_zenodo(record_id, directory="data", files=None):
+    """
+    Download files from a Zenodo record, for example a set of ROQ bases.
+
+    Parameters
+    ----------
+    record_id : int
+      The Zenodo record ID to download files from.
+    directory : str, optional
+      The name of the directory in which to store the
+      downloaded files. Defaults to "data".
+    files : list of str, optional
+      A list of specific file names to download from the record. If None,
+      all files in the record will be downloaded. Defaults to None.
+
+    Returns
+    -------
+    downloaded_files : list of str
+      The local paths of the downloaded files.
+    """
+    api_url = f"https://zenodo.org/api/records/{record_id}"
+    response = requests.get(api_url)
+    response.raise_for_status()
+    record_files = response.json().get("files", [])
+
+    downloaded_files = []
+    for file_info in record_files:
+        filename = unquote(file_info.get("key"))
+        if files is not None and filename not in files:
+            continue
+        file_url = file_info.get("links", {}).get("self")
+        local_filename = download_file(file_url, directory=directory, name=filename)
+        downloaded_files.append(os.path.join(directory, local_filename))
+
+    return downloaded_files
