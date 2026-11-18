@@ -10,7 +10,7 @@ Create or update `.gitlab-ci.yml`:
 # Test with offline mocks (no network required)
 test:offline:
   stage: test
-  image: python:3.9
+  image: python:3.12
   script:
     - pip install -e .
     - python3 -m unittest discover -s tests -p "test_*.py" -v
@@ -19,7 +19,7 @@ test:offline:
 # Test with network access (optional)
 test:with-network:
   stage: test
-  image: python:3.9
+  image: python:3.12
   script:
     - pip install -e .
     # Pre-download test data
@@ -47,7 +47,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ['3.9', '3.10', '3.11']
+        python-version: ['3.12', '3.13']
     
     steps:
     - uses: actions/checkout@v3
@@ -78,7 +78,7 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
-        python-version: '3.10'
+        python-version: '3.12'
     
     - name: Install dependencies
       run: |
@@ -125,7 +125,7 @@ python3 -m unittest discover -s tests -p "test_*.py" -v
 For testing in Docker:
 
 ```dockerfile
-FROM python:3.10
+FROM python:3.12
 
 WORKDIR /app
 

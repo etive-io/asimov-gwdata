@@ -1,4 +1,4 @@
-image: python:3.9
+image: python:3.12
 
 include:
   # https://computing.docs.ligo.org/gitlab-ci-templates/
@@ -59,15 +59,9 @@ include:
     name: "Python Present"
     inputs:
       stage: test
-      python_versions: ["3.9", "3.10", "3.11"]
+      python_versions: ["3.12", "3.13"]
 
-  # - component: $CI_SERVER_FQDN/computing/gitlab/components/python/test@1.6.0
-  #   name: "Python Future"
-  #   inputs:
-  #     stage: test
-  #     python_versions: ["3.12", "3.13"]
-  #   allow_failure: True
-      
+
   # - component: $CI_SERVER_FQDN/computing/gitlab/components/conda/build@1.0.3
   #   inputs:
   #     stage: test

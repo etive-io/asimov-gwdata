@@ -3,7 +3,8 @@ name: End-to-End Tests (HTCondor)
 # Runs asimov-gwdata as an actual asimov pipeline, submitting real HTCondor
 # jobs inside an htcondor/mini container, for each major download type
 # (GWOSC frames, local-storage calibration, PESummary-sourced calibration +
-# PSDs). This is the level below which asimov's own htcondor-tests.yml
+# PSDs, public-DCC calibration). This is the level below which asimov's
+# own htcondor-tests.yml
 # exercises asimov-gwdata as one step in a much larger PE workflow - this
 # workflow exists so a regression in the gwdata<->asimov integration (e.g.
 # the pipeline's config template, or Pipeline.build_dag/detect_completion)
@@ -32,7 +33,9 @@ jobs:
     name: "HTCondor End-to-End Test"
     runs-on: ubuntu-latest
     container:
-      image: htcondor/mini:latest
+      # Pinned: the 25.14 PyPI bindings cannot authenticate to a 25.13 daemon
+      # (AUTHENTICATE:1003 at schedd.submit()), so keep image and bindings together.
+      image: htcondor/mini:25.13.2-el9
       options: --privileged
     defaults:
       run:
@@ -61,7 +64,7 @@ jobs:
         with:
           miniconda-version: "latest"
           auto-activate-base: false
-          python-version: "3.10"
+          python-version: "3.12"
           activate-environment: asimov
           channels: conda-forge
           use-mamba: true
@@ -72,7 +75,7 @@ jobs:
           git config --global --add safe.directory "${GITHUB_WORKSPACE}"
           conda activate asimov
           python -m pip install --upgrade pip
-          python -m pip install --force-reinstall "."
+          python -m pip install --force-reinstall "." "htcondor<25.14"
           echo "Installed asimov from: $(python -c 'import asimov; print(asimov.__file__)')"
           echo "Installed gwdata pipeline plugin from: $(python -c 'import datafind.asimov; print(datafind.asimov.__file__)')"
 
@@ -254,42 +257,97 @@ jobs:
           timeout: "60"
           interval: "10"
 
+      # --- Scenario 4: calibration from the public LIGO DCC ---------------
+      # Same network constraint as scenario 1: pre-fetch the real O1
+      # calibration archive here, in a plain script step, directly into the
+      # rundir the condor job below will use. get_calibration_from_dcc()
+      # caches the extracted archive on disk and skips re-downloading if
+      # it's already there, so the (network-dead) condor job re-runs the
+      # same lookup against this pre-fetched archive instead of trying to
+      # reach the DCC itself.
+      # dcc.ligo.org hasn't been observed to be flaky the way gwosc.org has,
+      # but retries the same way as scenario 1's pre-fetch as cheap
+      # insurance against a one-off failure.
+      # GW150914's real event time is used unmodified here -- unlike
+      # scenario 2 (which has to override it because find_calibrations_on_cit
+      # doesn't support O1 at all), the public DCC's O1 coverage starts
+      # before GW150914, so this scenario also demonstrates public-DCC
+      # calibration succeeding for a time local-storage can't serve. Value
+      # mirrors scenario 1's frame pre-fetch (event time minus 1s) exactly.
+      - name: Pre-fetch the real DCC calibration archive (condor jobs have no network)
+        uses: etive-io/actions/run-asimov-command@v1
+        with:
+          script: |
+            mkdir -p working/GW150914_095045/get-data-calibration-public-dcc
+            cd working/GW150914_095045/get-data-calibration-public-dcc
+            python3 -c "
+            import time
+            from datafind.calibration import get_calibration_from_dcc
+
+            max_attempts = 5
+            for attempt in range(1, max_attempts + 1):
+                try:
+                    get_calibration_from_dcc(1126259461.391, interferometers=['H1', 'L1'])
+                    break
+                except Exception as e:
+                    print(f'Attempt {attempt}/{max_attempts} failed: {e!r}')
+                    if attempt == max_attempts:
+                        raise
+                    time.sleep(15)
+            "
+
+      - name: Add and submit public-DCC calibration job
+        uses: etive-io/actions/run-asimov-command@v1
+        with:
+          script: |
+            asimov apply -f "$GITHUB_WORKSPACE/tests/test_blueprints/calibration_public_dcc.yaml" -e GW150914_095045
+            asimov manage build submit
+
+      - name: Wait for public-DCC calibration files
+        uses: etive-io/actions/wait-for-files@v1
+        with:
+          patterns: "H1.txt L1.txt"
+          directory: "working/GW150914_095045/get-data-calibration-public-dcc/calibration"
+          timeout: "120"
+          interval: "10"
+
       # --- Verification ---------------------------------------------------
       - name: Run asimov monitor
         uses: etive-io/actions/run-asimov-command@v1
         with:
           script: asimov monitor
 
-      - name: Verify all three gwdata analyses completed
+      - name: Verify all four gwdata analyses completed
         uses: etive-io/actions/run-asimov-command@v1
         with:
-          # Reads the ledger directly (rather than asimov.monitor_api, which
-          # is only available on much newer asimov than this repo's declared
-          # minimum) so this check works across the range of asimov versions
-          # asimov-gwdata supports.
+          # Goes through asimov's ledger API rather than reading
+          # .asimov/ledger.yml directly: asimov 0.8 projects store the ledger
+          # in a database (.asimov/ledger.db) instead, and the API works for
+          # both.
           script: |
             python3 <<'EOF'
             import sys
-            import yaml
-
-            with open(".asimov/ledger.yml") as f:
-                ledger = yaml.safe_load(f)
+            from asimov import current_ledger as ledger
 
             print("Final analysis statuses:")
             failures = []
-            for event in ledger.get("events", []):
-                for prod_entry in event.get("productions", []):
-                    for name, prod in prod_entry.items():
-                        status = str(prod.get("status", "")).lower()
-                        print(f"  {name}: {status}")
-                        if status not in ("finished", "uploaded"):
-                            failures.append(f"{name}: {status}")
+            count = 0
+            for event in ledger.get_event():
+                for production in event.productions:
+                    count += 1
+                    status = str(production.status).lower()
+                    print(f"  {production.name}: {status}")
+                    if status not in ("finished", "uploaded"):
+                        failures.append(f"{production.name}: {status}")
+            if count == 0:
+                print("FAIL: no analyses found in the ledger")
+                sys.exit(1)
             if failures:
                 print(f"\nFAIL: {len(failures)} analyses not complete:")
                 for f in failures:
                     print(f"  - {f}")
                 sys.exit(1)
-            print("\nAll gwdata analyses are complete!")
+            print(f"\nAll {count} gwdata analyses are complete!")
             EOF
 
       - name: Archive testing artifacts
