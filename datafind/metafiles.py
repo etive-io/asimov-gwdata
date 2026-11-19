@@ -30,10 +30,12 @@ class Metafile(contextlib.AbstractContextManager):
 
         """
         self.filename = filename
+        logger.debug(f"Metafile {filename}")
 
 
     def __enter__(self):
 
+        logger.info(f"Opening PESummary metafile {self.filename}")
         self.metafile = h5py.File(self.filename)
 
         return self
@@ -48,6 +50,7 @@ class Metafile(contextlib.AbstractContextManager):
             analyses.remove("history")
             analyses.remove("version")
             analysis = sorted(analyses)[0]
+            logger.info(f"No analysis specified; using {analysis!r}")
         psds = {}
         for ifo, psd in self.metafile[analysis]['psds'].items():
             psds[ifo] = PSD(psd, ifo=ifo)
@@ -60,6 +63,7 @@ class Metafile(contextlib.AbstractContextManager):
             analyses.remove("history")
             analyses.remove("version")
             analysis = sorted(analyses)[0]
+            logger.info(f"No analysis specified; using {analysis!r}")
         cals = {}
         for ifo, cal in self.metafile[analysis]['calibration_envelope'].items():
             cals[ifo] = CalibrationUncertaintyEnvelope.from_array(cal)
@@ -96,9 +100,11 @@ class PSD:
             )
             out, err = pipe.communicate()
 
-            if err:
-                logger.warning(f"An XML format PSD could not be created. {err}")
+            if pipe.returncode != 0 or err:
+                logger.warning(f"An XML format PSD could not be created. {out} {err}")
             os.remove(tmp)
 
         else:
-            logger.warning("An XML format PSD could not be created.")
+            logger.warning(
+                f"An XML format PSD could not be created: {executable} was not found."
+            )
