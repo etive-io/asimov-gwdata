@@ -13,6 +13,14 @@ name: End-to-End Tests (HTCondor)
 # The shared composite actions used below (setup-htcondor, create-submit-user,
 # run-asimov-command, wait-for-files) live in etive-io/actions, which is used
 # across the asimov plugin ecosystem for this same HTCondor CI scaffolding.
+#
+# Every scenario runs twice: once against the permissive htcondor/mini pool,
+# and once against a pool configured with the LIGO Data Grid's
+# submission-time policy (valid accounting group required, request_disk
+# required, getenv = True rejected, security:recommended). The LDG policy
+# and its setup action are vendored from asimov (see
+# tests/fixtures/ldg-condor-config/README.md); asimov runs the same check
+# for its own bundled pipelines in htcondor-ldg-parity-tests.yml.
 
 on:
   push:
@@ -30,8 +38,14 @@ permissions:
 
 jobs:
   e2e:
-    name: "HTCondor End-to-End Test"
+    # The permissive leg keeps the original check name so existing branch
+    # protection rules continue to match it.
+    name: ${{ matrix.pool == 'ldg' && 'HTCondor End-to-End Test (LDG parity)' || 'HTCondor End-to-End Test' }}
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        pool: [permissive, ldg]
     container:
       # Pinned: the 25.14 PyPI bindings cannot authenticate to a 25.13 daemon
       # (AUTHENTICATE:1003 at schedd.submit()), so keep image and bindings together.
@@ -46,7 +60,13 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: etive-io/actions/setup-htcondor@v1
+      - name: Set up HTCondor (permissive pool)
+        if: matrix.pool == 'permissive'
+        uses: etive-io/actions/setup-htcondor@v1
+
+      - name: Set up HTCondor (LDG-parity pool)
+        if: matrix.pool == 'ldg'
+        uses: ./.github/actions/setup-htcondor-ldg
 
       - name: Install base tools
         run: |
@@ -120,10 +140,15 @@ jobs:
         with:
           script: asimov init "Test Project"
 
-      - name: Configure asimov user
+      - name: Configure asimov user and accounting
         uses: etive-io/actions/run-asimov-command@v1
         with:
-          script: asimov configuration update condor/user submituser
+          # The blueprints don't set a per-analysis accounting group, so this
+          # project-wide tag is what gwdata's jobs carry. The LDG-parity pool
+          # rejects jobs without a tag from its (fixture-only) valid_tags map.
+          script: |
+            asimov configuration update condor/user submituser
+            asimov configuration update condor/accounting ligo.dev.o4.cbc.pe.bilby
 
       - name: Configure HTCondor settings
         uses: etive-io/actions/run-asimov-command@v1
@@ -350,11 +375,26 @@ jobs:
             print(f"\nAll {count} gwdata analyses are complete!")
             EOF
 
+      # A job rejected at submit time by the LDG-parity policy would
+      # otherwise only show up as a wait-for-files timeout. Dump the queue
+      # and history (with hold reasons and accounting classads) so the cause
+      # is visible in the log.
+      - name: Show HTCondor queue/history for diagnostics
+        if: always()
+        run: |
+          su - submituser -c '
+            echo "=== condor_q (submituser) ==="
+            condor_q submituser -af ClusterId JobStatus JobBatchName LigoSearchTag LigoSearchUser HoldReason || true
+            echo
+            echo "=== condor_history (submituser, last 50) ==="
+            condor_history submituser -af ClusterId JobStatus JobBatchName LigoSearchTag ExitCode HoldReason -limit 50 || true
+          '
+
       - name: Archive testing artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: e2e-htcondor-debug
+          name: e2e-htcondor-debug-${{ matrix.pool }}
           path: |
             .asimov/
             checkouts/

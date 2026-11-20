@@ -1,0 +1,80 @@
+# Ledger and blueprint terms read by the gwdata pipeline.
+#
+# Registered with asimov (>= 0.8) through the ``asimov.vocabulary`` entry
+# point, so ``asimov vocabulary check`` recognises them. Terms which mean the
+# same thing to every pipeline (``interferometers``, ``event time``,
+# ``data.frame types``, ``scheduler.*``, ...) are in asimov's core
+# vocabulary and are not repeated here. ``download`` is already in core,
+# marked as owned by gwdata.
+
+version: 1
+
+terms:
+
+  source:
+    description: >-
+      Where gwdata should fetch the requested data products from.
+    children:
+      type:
+        type: string
+        description: >-
+          The kind of source: ``pesummary`` (a PESummary metafile),
+          ``frame`` (frame files), ``local storage`` (a calibration
+          archive on the local filesystem; the default for calibration)
+          or ``public`` (calibration envelopes from the public LIGO DCC).
+      location:
+        type: string
+        description: >-
+          The location of the source, for example the path (or glob
+          pattern) of a PESummary metafile.
+      analysis:
+        type: string
+        description: >-
+          The analysis label within a PESummary metafile to read from, for
+          example ``C01:IMRPhenomXPHM``. Defaults to the first analysis.
+      frames:
+        type: string
+        description: >-
+          Where to fetch frame files from: ``gwosc`` (the default) or
+          ``osdf``.
+
+  locations:
+    description: Filesystem and server locations gwdata reads data from.
+    children:
+      calibration directory:
+        type: string
+        description: >-
+          The root of a local calibration-uncertainty archive, laid out as
+          on the LIGO Data Grid.
+      datafind server:
+        type: string
+        description: The gwdatafind server to query for frame files.
+
+  file length:
+    type: integer
+    units: s
+    description: >-
+      The minimum duration of the frame files to download from GWOSC.
+      Defaults to 32.
+
+  calibration version:
+    type: any
+    description: >-
+      The calibration uncertainty release to use, either a single version
+      for every interferometer or a mapping from interferometer to version.
+
+  virgo prefix:
+    type: string
+    description: >-
+      The channel prefix used to read Virgo calibration uncertainty from
+      frame files, for example ``V1:Hrec_hoft_U00``.
+
+  virgo frametype:
+    type: string
+    description: The frame type containing Virgo calibration uncertainty.
+
+  virgo timestamp channel:
+    type: string
+    description: >-
+      The channel giving the timestamp of the Virgo calibration
+      uncertainty stored in frame files.

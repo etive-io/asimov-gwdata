@@ -72,3 +72,6 @@ gwdata = 'datafind.asimov:Pipeline'
 
 [project.entry-points.'asimov.commands']
 gw = 'datafind.cli:gw'
+
+[project.entry-points.'asimov.vocabulary']
+gwdata = 'datafind.vocabulary:vocabulary'
