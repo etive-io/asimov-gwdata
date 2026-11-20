@@ -1,3 +1,4 @@
+import configparser
 import importlib.resources
 import os
 import glob
@@ -19,6 +20,82 @@ class Pipeline(asimov.pipeline.Pipeline):
     name = "gwdata"
     config_template = importlib.resources.files("datafind").joinpath("datafind_template.yml")
     _pipeline_command = "gwdata"
+
+    #: Every data product this pipeline can produce (asimov >= 0.8 uses this
+    #: to check ``needs:`` dependencies and to find PSDs from a dependency).
+    #: These are the keys :meth:`collect_assets` returns. The products a
+    #: particular analysis will produce depend on its ``download`` list; see
+    #: :meth:`get_actual_outputs`.
+    available_outputs = ["frames", "caches", "psds", "xml psds", "calibration", "samples"]
+    required_inputs = []
+
+    # Maps entries in an analysis's ``download`` list onto output products.
+    # "xml psds" is deliberately not promised for a PSD download: it is only
+    # produced when convert_psd_ascii2xml is available in the job's
+    # environment. Frame caches are handled in get_actual_outputs.
+    _DOWNLOAD_OUTPUTS = {
+        "frames": ["frames"],
+        "calibration": ["calibration"],
+        "psds": ["psds"],
+        "psd": ["psds"],
+        "posterior": ["samples"],
+    }
+
+    def get_actual_outputs(self, production):
+        """
+        Return the data products a specific analysis will produce,
+        based on its ``download`` list (which defaults to frames, as in
+        the config template).
+        """
+        downloads = production.meta.get("download", ["frames"]) or []
+        outputs = []
+        for item in downloads:
+            for product in self._DOWNLOAD_OUTPUTS.get(item, []):
+                if product not in outputs:
+                    outputs.append(product)
+        # A frame cache is only written for frames fetched from GWOSC (the
+        # default), not for frames found through a datafind server (OSDF).
+        source = production.meta.get("source", {}) or {}
+        if "frames" in outputs and source.get("frames", "gwosc") != "osdf":
+            outputs.insert(outputs.index("frames") + 1, "caches")
+        return outputs
+
+    def get_actual_inputs(self, production):
+        return []
+
+    def _accounting(self):
+        """
+        Work out the HTCondor accounting group and user for this job.
+
+        The analysis's own ``scheduler: accounting group`` takes precedence,
+        falling back to the project-wide ``[condor] accounting`` setting,
+        which is what asimov's other pipelines use. LIGO Data Grid pools
+        reject jobs without a valid accounting group, so falling back to the
+        project setting matters there.
+
+        Returns
+        -------
+        tuple
+            ``(accounting_group, accounting_group_user)``; either may be
+            ``None`` if it is not configured anywhere.
+        """
+        scheduler_meta = self.production.meta.get("scheduler", {}) or {}
+
+        group = scheduler_meta.get("accounting group")
+        if not group:
+            try:
+                group = config.get("condor", "accounting")
+            except (configparser.NoOptionError, configparser.NoSectionError, KeyError):
+                group = None
+
+        user = scheduler_meta.get("accounting group user")
+        if not user:
+            try:
+                user = config.get("condor", "user")
+            except (configparser.NoOptionError, configparser.NoSectionError, KeyError):
+                user = None
+
+        return group, user
 
     def _substitute_locations_in_config(self):
         """
@@ -53,7 +130,11 @@ class Pipeline(asimov.pipeline.Pipeline):
 
     def build_dag(self, dryrun=False):
         """
-        Create a condor submission description.
+        Create a scheduler job description and submit it.
+
+        With ``dryrun=True`` the submit description and wrapper script are
+        still written to the run directory, so they can be inspected, but
+        nothing is submitted to the scheduler.
         """
         name = self.production.name  # meta['name']
         ini = self.production.event.repository.find_prods(name, self.category)[0]
@@ -76,13 +157,12 @@ class Pipeline(asimov.pipeline.Pipeline):
         if (source.get("type") == "frame") or (source.get("frames") == "osdf"):
             job_kwargs["use_oauth_services"] = "scitokens"
 
-        accounting_group = self.production.meta.get("scheduler", {}).get(
-            "accounting group", None
-        )
+        accounting_group, accounting_group_user = self._accounting()
 
         if accounting_group:
-            job_kwargs["accounting_group_user"] = config.get("condor", "user")
             job_kwargs["accounting_group"] = accounting_group
+            if accounting_group_user:
+                job_kwargs["accounting_group_user"] = accounting_group_user
         else:
             self.logger.warning(
                 "This job does not supply any accounting information, which may prevent it running on some clusters."
@@ -113,6 +193,13 @@ class Pipeline(asimov.pipeline.Pipeline):
             with open(f"{name}.sh", "w") as bashfile:
                 bashfile.write(str(full_command))
 
+        if dryrun:
+            self.logger.info(
+                f"Dry run: wrote {name}.sub and {name}.sh in "
+                f"{self.production.rundir}, but did not submit the job."
+            )
+            return
+
         with set_directory(self.production.rundir):
             cluster_id = self.scheduler.submit(job)
             self.logger.info(f"Submitted {cluster_id} to the job queue.")
@@ -121,6 +208,12 @@ class Pipeline(asimov.pipeline.Pipeline):
         self.clusterid = cluster_id
 
     def submit_dag(self, dryrun=False):
+        if dryrun:
+            self.logger.info(
+                f"Dry run: not marking {self.production.name} as running, "
+                "since no job was submitted."
+            )
+            return None
         self.production.status = "running"
         self.production.job_id = int(self.clusterid)
         return self.clusterid
@@ -166,9 +259,8 @@ class Pipeline(asimov.pipeline.Pipeline):
 
             outputs["frames"] = frames
 
-            c = self.production.event.meta["data"].get("data files", {})
-            c.update(frames)
-            self.production.event.meta["data"]["data files"] = c
+            event_data = self.production.event.meta.setdefault("data", {})
+            event_data.setdefault("data files", {}).update(frames)
 
 
         if os.path.exists(os.path.join(self.production.rundir, "cache")) and (
@@ -182,7 +274,7 @@ class Pipeline(asimov.pipeline.Pipeline):
                 cache[ifo] = cache_file
 
             outputs["caches"] = cache
-            self.production.event.meta['data']['cache files'] = cache
+            self.production.event.meta.setdefault("data", {})["cache files"] = cache
 
         if os.path.exists(os.path.join(self.production.rundir, "psds")):
             results_dir = glob.glob(os.path.join(self.production.rundir, "psds", "*.dat"))
@@ -219,9 +311,8 @@ class Pipeline(asimov.pipeline.Pipeline):
 
             outputs["calibration"] = calibration
 
-            c = self.production.event.meta["data"].get("calibration", {})
-            c.update(calibration)
-            self.production.event.meta["data"]["calibration"] = c
+            event_data = self.production.event.meta.setdefault("data", {})
+            event_data.setdefault("calibration", {}).update(calibration)
             
         if os.path.exists(os.path.join(self.production.rundir, "posterior")):
             results = glob.glob(os.path.join(self.production.rundir, "posterior", "*"))
